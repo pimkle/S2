@@ -94,24 +94,51 @@ describe('PivotDataSet util test', () => {
   });
 
   test('for getDataPath function', () => {
-    const rowDimensionValues = ['浙江省', '杭州市'];
-    const colDimensionValues = ['家具', '桌子'];
     const rows = ['province', 'city'];
     const columns = ['type', 'sub_type'];
     const rowPivotMeta = new Map();
     const colPivotMeta = new Map();
 
-    const result = getDataPath({
-      rowDimensionValues,
-      colDimensionValues,
+    const params = {
       rowPivotMeta,
       colPivotMeta,
       isFirstCreate: true,
       careUndefined: false,
       rowFields: rows,
       colFields: columns,
-    });
-    expect(result).toEqual([0, 0, 0, 0]);
+    };
+
+    expect(
+      getDataPath({
+        rowDimensionValues: ['浙江省', '杭州市'],
+        colDimensionValues: ['家具', '桌子'],
+        ...params,
+      }),
+    ).toEqual([0, 0, 0, 0]);
+
+    expect(
+      getDataPath({
+        rowDimensionValues: ['浙江省', '绍兴市'],
+        colDimensionValues: ['家具', '桌子'],
+        ...params,
+      }),
+    ).toEqual([0, 1, 0, 0]);
+
+    expect(
+      getDataPath({
+        rowDimensionValues: ['浙江省', '杭州市'],
+        colDimensionValues: ['办公用品', '纸张'],
+        ...params,
+      }),
+    ).toEqual([0, 0, 1, 0]);
+
+    expect(
+      getDataPath({
+        rowDimensionValues: ['浙江省', '绍兴市'],
+        colDimensionValues: ['办公用品', '纸张'],
+        ...params,
+      }),
+    ).toEqual([0, 1, 1, 0]);
   });
 
   test('for getDimensionsWithoutPathPre function', () => {
