@@ -92,31 +92,45 @@ const options: S2Options = {
 
 describe('TableSheet normal spec', () => {
   test('scrollWithAnimation with duration and callback', async () => {
-    const s2 = new TableSheet(getContainer(), dataCfg, options);
+    const container = getContainer();
+    const s2 = new TableSheet(container, dataCfg, options);
     s2.render();
 
-    const onScrollFinish = jest.fn();
-    s2.facet.scrollWithAnimation(
-      {
-        offsetX: {
-          value: 10,
-          animate: true,
-        },
-        offsetY: {
-          value: 10,
-          animate: true,
-        },
-      },
-      10,
-      onScrollFinish,
-    );
-    await sleep(30);
+    const button = document.createElement('button');
+    button.textContent = 'foo';
+    container.appendChild(button);
+    button.onclick = () => {
+      s2.panelScrollGroup.cacheToCanvas();
+    };
 
-    expect(s2.facet.getScrollOffset()).toStrictEqual({
-      scrollY: 10,
-      scrollX: 10,
-      hRowScrollX: 0,
-    });
-    expect(onScrollFinish).toBeCalled();
+    const el = document.createElement('canvas');
+    el.id = 'foo';
+    el.width = 1600;
+    el.height = 1200;
+    container.appendChild(el);
+
+    // const onScrollFinish = jest.fn();
+    // s2.facet.scrollWithAnimation(
+    //   {
+    //     offsetX: {
+    //       value: 10,
+    //       animate: true,
+    //     },
+    //     offsetY: {
+    //       value: 10,
+    //       animate: true,
+    //     },
+    //   },
+    //   10,
+    //   onScrollFinish,
+    // );
+    // await sleep(30);
+
+    // expect(s2.facet.getScrollOffset()).toStrictEqual({
+    //   scrollY: 10,
+    //   scrollX: 10,
+    //   hRowScrollX: 0,
+    // });
+    // expect(onScrollFinish).toBeCalled();
   });
 });

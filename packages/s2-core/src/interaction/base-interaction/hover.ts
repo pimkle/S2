@@ -162,11 +162,11 @@ export class HoverEvent extends BaseEvent implements BaseEventImplement {
       const { interaction, options } = this.spreadsheet;
       const { interaction: interactionOptions } = options;
       const meta = cell?.getMeta() as ViewMeta;
+
       interaction.changeState({
         cells: [getCellMeta(cell)],
         stateName: InteractionStateName.HOVER,
       });
-
       if (interactionOptions.hoverHighlight) {
         // highlight all the row and column cells which the cell belongs to
         this.updateRowColCells(meta);

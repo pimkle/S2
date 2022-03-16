@@ -1,4 +1,11 @@
-import { BBox, Group, IShape, Point, SimpleBBox } from '@antv/g-canvas';
+import {
+  BBox,
+  Group,
+  IElement,
+  IShape,
+  Point,
+  SimpleBBox,
+} from '@antv/g-canvas';
 import { each, get, includes, isBoolean, isNumber, keys, pickBy } from 'lodash';
 import {
   CellTypes,
@@ -291,5 +298,27 @@ export abstract class BaseCell<T extends SimpleBBox> extends Group {
     updateShapeAttr(this.backgroundShape, SHAPE_STYLE_MAP.backgroundOpacity, 1);
     updateShapeAttr(this.textShape, SHAPE_STYLE_MAP.textOpacity, 1);
     updateShapeAttr(this.linkFieldShape, SHAPE_STYLE_MAP.opacity, 1);
+  }
+
+  public dirtyCheck(item: IElement) {
+    const hasChanged = item.get('hasChanged');
+    if (!item.cfg.visible) {
+      return false;
+    }
+    if (hasChanged) {
+      return true;
+    }
+
+    if (item.isGroup()) {
+      const children = (item as Group).getChildren();
+      for (let i = 0; i < children.length; i++) {
+        const n = children[i];
+        const isDirty = this.dirtyCheck(n as IElement);
+        if (isDirty) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }

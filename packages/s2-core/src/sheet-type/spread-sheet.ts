@@ -1,5 +1,6 @@
+import { PanelGroup } from 'src/group/panel-group';
 import EE from '@antv/event-emitter';
-import { Canvas, Event as CanvasEvent, IGroup } from '@antv/g-canvas';
+import { Canvas, Event as CanvasEvent, Group, IGroup } from '@antv/g-canvas';
 import {
   clone,
   forEach,
@@ -561,10 +562,11 @@ export abstract class SpreadSheet extends EE {
       name: KEY_GROUP_BACK_GROUND,
       zIndex: BACK_GROUND_GROUP_CONTAINER_Z_INDEX,
     });
-    this.panelGroup = this.container.addGroup({
+    this.panelGroup = new Group({
       name: KEY_GROUP_PANEL_GROUND,
       zIndex: PANEL_GROUP_GROUP_CONTAINER_Z_INDEX,
     });
+    this.container.add(this.panelGroup);
     this.foregroundGroup = this.container.addGroup({
       name: KEY_GROUP_FORE_GROUND,
       zIndex: FRONT_GROUND_GROUP_CONTAINER_Z_INDEX,
@@ -580,10 +582,12 @@ export abstract class SpreadSheet extends EE {
   }
 
   protected initPanelGroupChildren() {
-    this.panelScrollGroup = this.panelGroup.addGroup({
+    this.panelScrollGroup = new PanelGroup({
       name: KEY_GROUP_PANEL_SCROLL,
       zIndex: PANEL_GROUP_SCROLL_GROUP_Z_INDEX,
+      ss: this,
     });
+    this.panelGroup.add(this.panelScrollGroup);
   }
 
   public getInitColumnLeafNodes(): Node[] {

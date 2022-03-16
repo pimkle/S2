@@ -1,5 +1,5 @@
 import { Point } from '@antv/g-base';
-import { IShape } from '@antv/g-canvas';
+import { IShape, Region } from '@antv/g-canvas';
 import { clamp, findLast, first, get, isEmpty, isEqual } from 'lodash';
 import { BaseCell } from '@/cell/base-cell';
 import {
@@ -486,5 +486,20 @@ export class DataCell extends BaseCell<ViewMeta> {
       this.getStyle().cell,
     );
     renderLine(this, position, style);
+  }
+
+  private hasRendered = false;
+
+  public draw(context: CanvasRenderingContext2D, region?: Region): void {
+    if (!this.hasRendered) {
+      super.draw(context, region);
+      this.hasRendered = true;
+      return;
+    }
+    const dirty = this.dirtyCheck(this);
+    if (dirty) {
+      console.log('draw');
+      super.draw(context, region);
+    }
   }
 }

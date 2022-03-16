@@ -65,7 +65,9 @@ export function updateShapeAttr<K extends keyof ShapeAttrs>(
   value: ShapeAttrs[K],
 ) {
   if (shape) {
-    set(shape, `attrs.${attribute}`, value);
+    shape.attr({
+      [attribute]: value,
+    });
   }
 }
 
