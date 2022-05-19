@@ -1,4 +1,4 @@
-import { PanelGroup } from 'src/group/panel-group';
+import { PanelScrollGroup } from 'src/group/panel-scroll-group';
 import type { IShape, Point, Region } from '@antv/g-canvas';
 import { clamp, findLast, first, get, isEmpty, isEqual, find } from 'lodash';
 import { BaseCell } from '@/cell/base-cell';
@@ -524,7 +524,7 @@ export class DataCell extends BaseCell<ViewMeta> {
     // super.draw(context, region);
     const [xMin, xMax, yMin, yMax] = (this.spreadsheet.facet as any)
       .panelScrollGroupIndexes;
-    const isPanelGroupChild = this.getParent() instanceof PanelGroup;
+    const isPanelGroupChild = this.getParent() instanceof PanelScrollGroup;
 
     if (
       this.meta.rowId >= yMax ||
