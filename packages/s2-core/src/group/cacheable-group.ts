@@ -10,47 +10,73 @@ export class CacheableGroup extends Group {
 
   private lastRenderScrollOffset: ScrollOffset;
 
-  private lastBBox: BBox;
+  private cacheBBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 
   constructor(cfg) {
     super(cfg);
     this.ss = cfg.ss;
   }
 
+  exportToCanvas(ctx: CanvasRenderingContext2D) {
+    const canvasTargetCtx = (
+      document.querySelector('#foo') as HTMLCanvasElement
+    ).getContext('2d');
+    canvasTargetCtx.putImageData(this.imageData, 0, 0);
+  }
+
   drawToCanvas(ctx: CanvasRenderingContext2D) {
-    // const canvasTargetCtx = (
-    //   document.querySelector('#foo') as HTMLCanvasElement
-    // ).getContext('2d');
-    ctx.putImageData(this.imageData, 0, 0);
+    const currentOffset = this.ss.facet.getScrollOffset();
+    const deltaX = currentOffset.scrollX - this.lastRenderScrollOffset.scrollX;
+    const deltaY = currentOffset.scrollY - this.lastRenderScrollOffset.scrollY;
+
+    if (deltaX < this.cacheBBox.width && deltaY < this.cacheBBox.height) {
+      ctx.putImageData(
+        this.imageData,
+        this.cacheBBox.x * 2 - deltaX * 2,
+        this.cacheBBox.y * 2 - deltaY * 2,
+      );
+    }
   }
 
   draw(context: CanvasRenderingContext2D, region?: Region): void {
     const hasChanged = this.get('hasChanged');
     this.hasChanged = hasChanged;
-    // if (this.imageData) {
-    //   const bbox = this.getCanvasBBox();
-    //   context.putImageData(
-    //     this.imageData,
-    //     bbox.x * 2,
-    //     bbox.y * 2,
-    //   );
-    // }
+
+    if (this.imageData) {
+      this.drawToCanvas(context);
+    }
 
     super.draw(context, region);
 
-    console.log('hasChanged', this.getCanvasBBox());
+    if (!this.cacheBBox) {
+      const canvasBBox = this.getCanvasBBox();
+      if (canvasBBox.width) {
+        const clipBbox = this.getClip().cfg.bbox;
+        this.cacheBBox = {
+          x: canvasBBox.x,
+          y: canvasBBox.y,
+          height: clipBbox.height,
+          width: clipBbox.width,
+        };
+      }
+    }
 
-    this.imageData = null;
-    const bbox = this.getCanvasBBox();
     // cache
-    if (bbox.width > 0) {
+    if (this.cacheBBox.width > 0) {
       this.imageData = context.getImageData(
-        bbox.x * 2,
-        bbox.y * 2,
-        bbox.width * 2,
-        bbox.height * 2,
+        this.cacheBBox.x * 2,
+        this.cacheBBox.y * 2,
+        this.cacheBBox.width * 2,
+        this.cacheBBox.height * 2,
       );
-      this.lastBBox = bbox;
+
+      // debug
+      // this.exportToCanvas(context);
 
       this.lastRenderScrollOffset = this.ss.facet.getScrollOffset();
     }

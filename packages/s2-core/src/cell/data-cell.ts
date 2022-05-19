@@ -1,4 +1,5 @@
 import { Point } from '@antv/g-base';
+import { PanelGroup } from 'src/group/panel-group';
 import { IShape, Region } from '@antv/g-canvas';
 import { clamp, findLast, first, get, isEmpty, isEqual } from 'lodash';
 import { BaseCell } from '@/cell/base-cell';
@@ -356,7 +357,7 @@ export class DataCell extends BaseCell<ViewMeta> {
    */
   protected drawInteractiveBorderShape() {
     // 往内缩一个像素，避免和外边框重叠
-    const margin = 1;
+    const margin = 10;
     const { x, y, height, width } = this.getCellArea();
     this.stateShapes.set(
       'interactiveBorderShape',
@@ -491,6 +492,22 @@ export class DataCell extends BaseCell<ViewMeta> {
   private hasRendered = false;
 
   public draw(context: CanvasRenderingContext2D, region?: Region): void {
+    // super.draw(context, region);
+    const [xMin, xMax, yMin, yMax] = (this.spreadsheet.facet as any)
+      .panelScrollGroupIndexes;
+    const isPanelGroupChild = this.getParent() instanceof PanelGroup;
+
+    if (
+      this.meta.rowId >= yMax ||
+      this.meta.rowId <= yMin ||
+      this.meta.colIndex <= xMin ||
+      this.meta.colIndex >= xMax ||
+      !isPanelGroupChild
+    ) {
+      super.draw(context, region);
+      return;
+    }
+
     if (!this.hasRendered) {
       super.draw(context, region);
       this.hasRendered = true;
@@ -498,7 +515,6 @@ export class DataCell extends BaseCell<ViewMeta> {
     }
     const dirty = this.dirtyCheck(this);
     if (dirty) {
-      console.log('draw');
       super.draw(context, region);
     }
   }
