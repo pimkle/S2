@@ -112,6 +112,8 @@ export abstract class BaseFacet {
 
   public gridInfo: GridInfo;
 
+  public panelScrollGroupIndexes = [];
+
   protected abstract doLayout(): LayoutResult;
 
   public abstract getViewCellHeights(
@@ -374,6 +376,8 @@ export abstract class BaseFacet {
       },
       this.getRealScrollX(this.cornerBBox.width),
     );
+
+    this.panelScrollGroupIndexes = indexes;
 
     return {
       center: indexes,

@@ -81,8 +81,6 @@ export class TableFacet extends BaseFacet {
     },
   };
 
-  public panelScrollGroupIndexes = [];
-
   public constructor(cfg: SpreadSheetFacetCfg) {
     super(cfg);
 

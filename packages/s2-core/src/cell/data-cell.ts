@@ -521,9 +521,8 @@ export class DataCell extends BaseCell<ViewMeta> {
   private hasRendered = false;
 
   public draw(context: CanvasRenderingContext2D, region?: Region): void {
-    // super.draw(context, region);
-    const [xMin, xMax, yMin, yMax] = (this.spreadsheet.facet as any)
-      .panelScrollGroupIndexes;
+    const [xMin, xMax, yMin, yMax] =
+      this.spreadsheet.facet.panelScrollGroupIndexes;
     const isPanelGroupChild = this.getParent() instanceof PanelScrollGroup;
 
     if (
@@ -542,6 +541,7 @@ export class DataCell extends BaseCell<ViewMeta> {
       this.hasRendered = true;
       return;
     }
+
     const dirty = this.dirtyCheck(this);
     if (dirty) {
       super.draw(context, region);

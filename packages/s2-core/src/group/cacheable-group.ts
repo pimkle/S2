@@ -1,11 +1,9 @@
-import { BBox, Group, Region } from '@antv/g-canvas';
-import { ScrollOffset, SpreadSheet } from '..';
+import { Region } from '@antv/g-canvas';
+import { ScrollOffset } from '..';
 import { GridGroup } from './grid-group';
 
 export class CacheableGroup extends GridGroup {
-  public imageData: ImageData;
-
-  public hasChanged = false;
+  public cacheCanvas: HTMLCanvasElement;
 
   private lastRenderScrollOffset: ScrollOffset;
 
@@ -16,11 +14,13 @@ export class CacheableGroup extends GridGroup {
     height: number;
   };
 
-  exportToCanvas(ctx: CanvasRenderingContext2D) {
-    const canvasTargetCtx = (
-      document.querySelector('#foo') as HTMLCanvasElement
-    ).getContext('2d');
-    canvasTargetCtx.putImageData(this.imageData, 0, 0);
+  constructor(cfg) {
+    super(cfg);
+    const { width, height } = this.s2.options;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    this.cacheCanvas = canvas;
   }
 
   drawToCanvas(ctx: CanvasRenderingContext2D) {
@@ -28,20 +28,22 @@ export class CacheableGroup extends GridGroup {
     const deltaX = currentOffset.scrollX - this.lastRenderScrollOffset.scrollX;
     const deltaY = currentOffset.scrollY - this.lastRenderScrollOffset.scrollY;
 
-    if (deltaX < this.cacheBBox.width && deltaY < this.cacheBBox.height) {
-      ctx.putImageData(
-        this.imageData,
-        this.cacheBBox.x * 2 - deltaX * 2,
-        this.cacheBBox.y * 2 - deltaY * 2,
-      );
-    }
+    const { width, height, x, y } = this.cacheBBox;
+    ctx.drawImage(
+      this.cacheCanvas,
+      deltaX * 2,
+      deltaY * 2,
+      width * 2,
+      height * 2,
+      x,
+      y,
+      width,
+      height,
+    );
   }
 
   draw(context: CanvasRenderingContext2D, region?: Region): void {
-    const hasChanged = this.get('hasChanged');
-    this.hasChanged = hasChanged;
-
-    if (this.imageData) {
+    if (this.cacheCanvas && this.cacheBBox) {
       this.drawToCanvas(context);
     }
 
@@ -60,19 +62,25 @@ export class CacheableGroup extends GridGroup {
       }
     }
 
-    // cache
-    if (this.cacheBBox.width > 0) {
-      this.imageData = context.getImageData(
-        this.cacheBBox.x * 2,
-        this.cacheBBox.y * 2,
-        this.cacheBBox.width * 2,
-        this.cacheBBox.height * 2,
+    if (this.cacheBBox) {
+      const { scrollX, scrollY } = this.s2.facet.getScrollOffset();
+      const ctx = this.cacheCanvas.getContext('2d');
+      const { width, height, x, y } = this.cacheBBox;
+
+      ctx.clearRect(0, 0, width * 2, height * 2);
+      ctx.drawImage(
+        this.getCanvas().cfg.el,
+        x * 2 + scrollX * 2,
+        y * 2 + scrollY * 2,
+        width * 2,
+        height * 2,
+        0,
+        0,
+        width * 2,
+        height * 2,
       );
-
-      // debug
-      // this.exportToCanvas(context);
-
-      this.lastRenderScrollOffset = this.s2.facet.getScrollOffset();
     }
+
+    this.lastRenderScrollOffset = this.s2.facet.getScrollOffset();
   }
 }
