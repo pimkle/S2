@@ -1,4 +1,5 @@
 import { Node } from 'src/facet/layout/node';
+import { FrozenGroup } from 'src/group/frozen-group';
 import { Event as CanvasEvent } from '@antv/g-canvas';
 import { SpreadSheet } from './spread-sheet';
 import { TableDataCell, TableRowCell } from '@/cell';
@@ -83,29 +84,31 @@ export class TableSheet extends SpreadSheet {
 
   protected initPanelGroupChildren(): void {
     super.initPanelGroupChildren();
-    this.frozenRowGroup = this.panelGroup.addGroup({
-      name: KEY_GROUP_PANEL_FROZEN_ROW,
+    const commonParams = {
       zIndex: PANEL_GROUP_FROZEN_GROUP_Z_INDEX,
-    });
-    this.frozenColGroup = this.panelGroup.addGroup({
-      name: KEY_GROUP_PANEL_FROZEN_COL,
-      zIndex: PANEL_GROUP_FROZEN_GROUP_Z_INDEX,
-    });
-    this.frozenTrailingRowGroup = this.panelGroup.addGroup({
-      name: KEY_GROUP_PANEL_FROZEN_TRAILING_ROW,
-      zIndex: PANEL_GROUP_FROZEN_GROUP_Z_INDEX,
-    });
-    this.frozenTrailingColGroup = this.panelGroup.addGroup({
-      name: KEY_GROUP_PANEL_FROZEN_TRAILING_COL,
-      zIndex: PANEL_GROUP_FROZEN_GROUP_Z_INDEX,
-    });
-    this.frozenTopGroup = this.panelGroup.addGroup({
-      name: KEY_GROUP_PANEL_FROZEN_TOP,
-      zIndex: PANEL_GROUP_FROZEN_GROUP_Z_INDEX,
-    });
-    this.frozenBottomGroup = this.panelGroup.addGroup({
-      name: KEY_GROUP_PANEL_FROZEN_BOTTOM,
-      zIndex: PANEL_GROUP_FROZEN_GROUP_Z_INDEX,
+      s2: this,
+    };
+    [
+      this.frozenRowGroup,
+      this.frozenColGroup,
+      this.frozenTrailingRowGroup,
+      this.frozenTrailingColGroup,
+      this.frozenTopGroup,
+      this.frozenBottomGroup,
+    ] = [
+      KEY_GROUP_PANEL_FROZEN_ROW,
+      KEY_GROUP_PANEL_FROZEN_COL,
+      KEY_GROUP_PANEL_FROZEN_TRAILING_ROW,
+      KEY_GROUP_PANEL_FROZEN_TRAILING_COL,
+      KEY_GROUP_PANEL_FROZEN_TOP,
+      KEY_GROUP_PANEL_FROZEN_BOTTOM,
+    ].map((name) => {
+      const g = new FrozenGroup({
+        name,
+        ...commonParams,
+      });
+      this.panelGroup.add(g);
+      return g;
     });
   }
 
@@ -120,9 +123,9 @@ export class TableSheet extends SpreadSheet {
       return new TableDataCell(facet, this);
     };
     return {
+      ...this.options,
       ...fields,
       ...style,
-      ...this.options,
       meta,
       spreadsheet: this,
       dataSet: this.dataSet,
@@ -154,23 +157,12 @@ export class TableSheet extends SpreadSheet {
   public onSortTooltipClick = ({ key }, meta) => {
     const { field } = meta;
 
-    const prevOtherSortParams = [];
-    let prevSelectedSortParams: SortParam;
-    this.dataCfg.sortParams.forEach((item) => {
-      if (item?.sortFieldId !== field) {
-        prevOtherSortParams.push(item);
-      } else {
-        prevSelectedSortParams = item;
-      }
-    });
-
     const sortParam: SortParam = {
-      ...(prevSelectedSortParams || {}),
       sortFieldId: field,
       sortMethod: key as unknown as SortParam['sortMethod'],
     };
     // 触发排序事件
-    this.emit(S2Event.RANGE_SORT, [...prevOtherSortParams, sortParam]);
+    this.emit(S2Event.RANGE_SORT, [sortParam]);
   };
 
   public handleGroupSort(event: CanvasEvent, meta: Node) {

@@ -21,6 +21,8 @@ import './index.less';
  * Base tooltips component
  */
 export class BaseTooltip {
+  public visible = false;
+
   public spreadsheet: SpreadSheet; // the type of Spreadsheet
 
   public container: HTMLElement; // the base container element
@@ -44,8 +46,9 @@ export class BaseTooltip {
     const { position, options, content } = showOptions;
     const { enterable } = getTooltipDefaultOptions(options);
     const container = this.getContainer();
-    const { autoAdjustBoundary } = this.spreadsheet.options.tooltip || {};
-
+    const { autoAdjustBoundary, adjustPosition } =
+      this.spreadsheet.options.tooltip || {};
+    this.visible = true;
     this.options = showOptions as unknown as TooltipShowOptions;
 
     this.renderContent<T>(content as T);
@@ -56,16 +59,14 @@ export class BaseTooltip {
       tooltipContainer: container,
       autoAdjustBoundary,
     });
-
-    this.position = {
+    this.position = adjustPosition?.({ x, y }) ?? {
       x,
       y,
     };
-
     setContainerStyle(container, {
       style: {
-        left: `${x}px`,
-        top: `${y}px`,
+        left: `${this.position?.x}px`,
+        top: `${this.position?.y}px`,
         pointerEvents: enterable ? 'all' : 'none',
       },
       className: `${TOOLTIP_CONTAINER_CLS}-show`,
@@ -73,6 +74,8 @@ export class BaseTooltip {
   }
 
   public hide() {
+    this.visible = false;
+
     if (!this.container) {
       return;
     }
@@ -87,6 +90,7 @@ export class BaseTooltip {
   }
 
   public destroy() {
+    this.visible = false;
     const container = this.getContainer();
     if (container) {
       this.resetPosition();

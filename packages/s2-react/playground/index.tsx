@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import { ChromePicker } from 'react-color';
 import {
   HeaderActionIconProps,
   S2Options,
@@ -27,25 +28,23 @@ import {
   TooltipAutoAdjustBoundary,
   customMerge,
   ThemeCfg,
-  S2Theme,
   DataType,
+  generatePalette,
+  getPalette,
+  InterceptType,
 } from '@antv/s2';
 import corePkg from '@antv/s2/package.json';
-import { forEach, random } from 'lodash';
+import { debounce, forEach, random } from 'lodash';
 import { customTreeFields } from '../__tests__/data/custom-tree-fields';
 import { dataCustomTrees } from '../__tests__/data/data-custom-trees';
 import { mockGridAnalysisDataCfg } from '../__tests__/data/grid-analysis-data';
-import {
-  singleMeasure,
-  multiMeasure,
-  customTree,
-} from '../__tests__/data/strategy-data';
+import { customTree } from '../__tests__/data/strategy-data';
 import reactPkg from '../package.json';
 import {
   pivotSheetDataCfg,
   sliderOptions,
   tableSheetDataCfg,
-  defaultTheme,
+  strategyTheme,
   strategyOptions as mockStrategyOptions,
   mockGridAnalysisOptions,
   defaultOptions,
@@ -56,6 +55,7 @@ import {
   SheetType,
   PartDrillDown,
   PartDrillDownInfo,
+  Adaptive,
 } from '@/components';
 
 import './index.less';
@@ -147,8 +147,9 @@ function MainLayout() {
   const [showPagination, setShowPagination] = React.useState(false);
   const [showTotals, setShowTotals] = React.useState(false);
   const [themeCfg, setThemeCfg] = React.useState<ThemeCfg>({ name: 'default' });
+  const [themeColor, setThemeColor] = React.useState<string>('#FFF');
   const [showCustomTooltip, setShowCustomTooltip] = React.useState(false);
-  const [adaptive, setAdaptive] = React.useState(false);
+  const [adaptive, setAdaptive] = React.useState<Adaptive>(false);
   const [options, setOptions] =
     React.useState<Partial<S2Options<React.ReactNode>>>(defaultOptions);
   const [dataCfg, setDataCfg] =
@@ -188,11 +189,12 @@ function MainLayout() {
     });
   };
 
-  const onSizeChange = (type: 'width' | 'height') => (e) => {
-    updateOptions({
-      [type]: e.target.value,
-    });
-  };
+  const onSizeChange = (type: 'width' | 'height') =>
+    debounce((e) => {
+      updateOptions({
+        [type]: Number(e.target.value),
+      });
+    }, 300);
 
   const onScrollSpeedRatioChange =
     (type: 'horizontal' | 'vertical') => (value: number) => {
@@ -210,11 +212,9 @@ function MainLayout() {
   };
 
   const onThemeChange = (e: RadioChangeEvent) => {
-    setThemeCfg(
-      customMerge({}, themeCfg, {
-        name: e.target.value,
-      }),
-    );
+    setThemeCfg({
+      name: e.target.value,
+    });
   };
 
   const onSheetTypeChange = (e: RadioChangeEvent) => {
@@ -308,9 +308,8 @@ function MainLayout() {
           belongsCell: 'colCell',
           displayCondition: (node: Node) =>
             node.id !== 'root[&]家具[&]桌子[&]number',
-          action: (props: HeaderActionIconProps) => {
-            const { meta, event } = props;
-            meta.spreadsheet.tooltip.show({
+          action: ({ event }: HeaderActionIconProps) => {
+            s2Ref.current?.showTooltip({
               position: { x: event.clientX, y: event.clientY },
               content: <ActionIconTooltip name="Filter colCell" />,
             });
@@ -321,9 +320,8 @@ function MainLayout() {
           belongsCell: 'colCell',
           displayCondition: (node: Node) =>
             node.id === 'root[&]家具[&]桌子[&]number',
-          action: (props: HeaderActionIconProps) => {
-            const { meta, event } = props;
-            meta.spreadsheet.tooltip.show({
+          action: ({ event }: HeaderActionIconProps) => {
+            s2Ref.current?.showTooltip({
               position: { x: event.clientX, y: event.clientY },
               content: <ActionIconTooltip name="SortDown colCell" />,
             });
@@ -332,9 +330,8 @@ function MainLayout() {
         {
           iconNames: ['FilterAsc'],
           belongsCell: 'cornerCell',
-          action: (props: HeaderActionIconProps) => {
-            const { meta, event } = props;
-            meta.spreadsheet.tooltip.show({
+          action: ({ event }: HeaderActionIconProps) => {
+            s2Ref.current?.showTooltip({
               position: { x: event.clientX, y: event.clientY },
               content: <ActionIconTooltip name="FilterAsc cornerCell" />,
             });
@@ -343,9 +340,8 @@ function MainLayout() {
         {
           iconNames: ['SortDown', 'Filter'],
           belongsCell: 'rowCell',
-          action: (props: HeaderActionIconProps) => {
-            const { meta, event } = props;
-            meta.spreadsheet.tooltip.show({
+          action: ({ event }: HeaderActionIconProps) => {
+            s2Ref.current?.showTooltip({
               position: { x: event.clientX, y: event.clientY },
               content: <ActionIconTooltip name="SortDown & Filter rowCell" />,
             });
@@ -355,31 +351,6 @@ function MainLayout() {
     },
     options,
   );
-
-  const onStrategyDataTypeChange = (e: RadioChangeEvent) => {
-    let newDataCfg: S2DataConfig;
-    switch (e.target.value) {
-      case 'multiMeasure':
-        newDataCfg = multiMeasure;
-        setStrategyOptions(
-          customMerge({}, strategyOptions, { hierarchyType: 'tree' }),
-        );
-        break;
-      case 'customTree':
-        newDataCfg = customTree;
-        setStrategyOptions(
-          customMerge({}, strategyOptions, { hierarchyType: 'customTree' }),
-        );
-        break;
-      default:
-        newDataCfg = singleMeasure;
-        setStrategyOptions(
-          customMerge({}, strategyOptions, { hierarchyType: 'tree' }),
-        );
-        break;
-    }
-    setStrategyDataCfg(newDataCfg);
-  };
 
   return (
     <div className="playground">
@@ -414,6 +385,34 @@ function MainLayout() {
                     <Radio.Button value="colorful">多彩蓝</Radio.Button>
                   </Radio.Group>
                 </Tooltip>
+              </Space>
+              <Space>
+                <Popover
+                  placement="bottomRight"
+                  content={
+                    <>
+                      <ChromePicker
+                        color={themeColor}
+                        onChangeComplete={(color) => {
+                          setThemeColor(color.hex);
+                          const palette = getPalette(themeCfg.name);
+                          const newPalette = generatePalette({
+                            ...palette,
+                            brandColor: color.hex,
+                          });
+                          setThemeCfg({
+                            name: themeCfg.name,
+                            palette: newPalette,
+                          });
+                        }}
+                      />
+                    </>
+                  }
+                >
+                  <Button size="small" style={{ marginLeft: 20 }}>
+                    主题色调整
+                  </Button>
+                </Popover>
               </Space>
               <Space style={{ margin: '20px 0', display: 'flex' }}>
                 <Tooltip title="tooltip 自动调整: 显示的tooltip超过指定区域时自动调整, 使其不遮挡">
@@ -549,6 +548,48 @@ function MainLayout() {
                   disabled={sheetType === 'table'}
                 />
                 <Switch
+                  checkedChildren="显示行小计/总计"
+                  unCheckedChildren="隐藏行小计/总计"
+                  defaultChecked={
+                    mergedOptions.totals?.row?.showSubTotals as boolean
+                  }
+                  onChange={(checked) => {
+                    updateOptions({
+                      totals: {
+                        row: {
+                          showGrandTotals: checked,
+                          showSubTotals: checked,
+                          reverseLayout: true,
+                          reverseSubLayout: true,
+                          subTotalsDimensions: ['province'],
+                        },
+                      },
+                    });
+                  }}
+                  disabled={sheetType === 'table'}
+                />
+                <Switch
+                  checkedChildren="显示列小计/总计"
+                  unCheckedChildren="隐藏列小计/总计"
+                  defaultChecked={
+                    mergedOptions.totals?.col?.showSubTotals as boolean
+                  }
+                  onChange={(checked) => {
+                    updateOptions({
+                      totals: {
+                        col: {
+                          showGrandTotals: checked,
+                          showSubTotals: checked,
+                          reverseLayout: true,
+                          reverseSubLayout: true,
+                          subTotalsDimensions: ['type'],
+                        },
+                      },
+                    });
+                  }}
+                  disabled={sheetType === 'table'}
+                />
+                <Switch
                   checkedChildren="冻结行头开"
                   unCheckedChildren="冻结行头关"
                   defaultChecked={mergedOptions.frozenRowHeader}
@@ -562,7 +603,7 @@ function MainLayout() {
                 <Switch
                   checkedChildren="容器宽高自适应开"
                   unCheckedChildren="容器宽高自适应关"
-                  defaultChecked={adaptive}
+                  defaultChecked={Boolean(adaptive)}
                   onChange={setAdaptive}
                 />
                 <Switch
@@ -651,7 +692,7 @@ function MainLayout() {
                   <Switch
                     checkedChildren="hover聚焦开"
                     unCheckedChildren="hover聚焦关"
-                    checked={mergedOptions.interaction.hoverFocus}
+                    checked={mergedOptions.interaction.hoverFocus as boolean}
                     onChange={(checked) => {
                       updateOptions({
                         interaction: {
@@ -744,11 +785,28 @@ function MainLayout() {
                 advancedSortCfg: { open: true },
               }}
               onDataCellTrendIconClick={logHandler('onDataCellTrendIconClick')}
-              onAfterRender={logHandler('onLoad')}
+              onAfterRender={logHandler('onAfterRender')}
               onDestroy={logHandler('onDestroy')}
               onColCellClick={onColCellClick}
               onRowCellClick={logHandler('onRowCellClick')}
-              onCornerCellClick={logHandler('onCornerCellClick')}
+              onCornerCellClick={(cellInfo) => {
+                s2Ref.current.showTooltip({
+                  position: {
+                    x: cellInfo.event.clientX,
+                    y: cellInfo.event.clientY,
+                  },
+                  content: 'click',
+                });
+              }}
+              onCornerCellHover={(cellInfo) => {
+                s2Ref.current.showTooltip({
+                  position: {
+                    x: cellInfo.event.clientX,
+                    y: cellInfo.event.clientY,
+                  },
+                  content: 'hover',
+                });
+              }}
               onDataCellClick={logHandler('onDataCellClick')}
               onLayoutResizeMouseDown={logHandler('onLayoutResizeMouseDown')}
               onCopied={logHandler('onCopied')}
@@ -765,16 +823,6 @@ function MainLayout() {
           />
         </TabPane>
         <TabPane tab="趋势分析表" key="strategy">
-          <Space size="middle" style={{ marginBottom: 20, display: 'flex' }}>
-            <Radio.Group
-              onChange={onStrategyDataTypeChange}
-              defaultValue="customTree"
-            >
-              <Radio.Button value="singleMeasure">单指标</Radio.Button>
-              <Radio.Button value="multiMeasure">多指标</Radio.Button>
-              <Radio.Button value="customTree">自定义目录树</Radio.Button>
-            </Radio.Group>
-          </Space>
           <SheetComponent
             sheetType="strategy"
             dataCfg={strategyDataCfg}
@@ -782,7 +830,7 @@ function MainLayout() {
             onRowCellClick={(v) => console.log(v)}
             header={{ exportCfg: { open: true } }}
             themeCfg={{
-              theme: defaultTheme as unknown as S2Theme,
+              theme: strategyTheme,
               name: 'gray',
             }}
           />

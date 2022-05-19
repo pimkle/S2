@@ -14,14 +14,14 @@ jobs:
     # 自动发布成功后
     if: github.event.workflow_run.conclusion == 'success'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: 'latest'
 
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v2
+      - name: Use Node.js 16
+        uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 16
           cache: 'yarn'
 
       - name: Git bootstrap
@@ -35,6 +35,11 @@ jobs:
       - name: Checkout branch
         run: |
           git checkout -b chore-sync
+
+      - name: Sleep 10m
+        uses: juliangruber/sleep-action@v1
+        with:
+          time: 10m
 
       - name: Install dependencies
         run: yarn
@@ -53,4 +58,4 @@ jobs:
         run: |
           gh pr create --title "chore: 🤖 更新 lock 和 changelog 文件" --body "🤖 由 [[Sync Site S2 Lock And Changelog With PR](https://github.com/antvis/S2/blob/master/.github/workflows/sync-site-lock-changelog-with-pr.yml)] action 自动创建."
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.JINKE_GITHUB_TOKEN }}

@@ -9,7 +9,6 @@ import { SpreadSheet } from '@/sheet-type';
 import { getListBySorted, filterUndefined } from '@/utils/data-set-operate';
 import { getDimensionsWithoutPathPre } from '@/utils/dataset/pivot-data-set';
 import { PivotDataSet } from '@/data-set';
-import { ID_SEPARATOR, ROOT_ID } from '@/common/constant';
 
 const addTotals = (
   spreadsheet: SpreadSheet,
@@ -40,13 +39,11 @@ export const buildRowTreeHierarchy = (params: TreeHeaderParams) => {
   const isDrillDownItem = spreadsheet.dataCfg.fields.rows?.length <= level;
   const sortedDimensionValues =
     (dataSet as PivotDataSet)?.sortedDimensionValues?.[currentField] || [];
-  const dimensions = sortedDimensionValues?.filter((item) =>
-    item?.includes(id?.split(`${ROOT_ID}${ID_SEPARATOR}`)[1]),
-  );
+
   const dimValues = filterUndefined(
     getListBySorted(
       [...(pivotMeta.keys() || [])],
-      [...getDimensionsWithoutPathPre(dimensions)],
+      [...getDimensionsWithoutPathPre([...sortedDimensionValues])],
     ),
   );
 

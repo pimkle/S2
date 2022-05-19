@@ -1,13 +1,24 @@
-import { customMerge, isUpDataValue, S2DataConfig, S2Options } from '@antv/s2';
+import {
+  customMerge,
+  isUpDataValue,
+  S2DataConfig,
+  S2Options,
+  S2Theme,
+} from '@antv/s2';
 import type { SliderSingleProps } from 'antd';
 import { isNil } from 'lodash';
-import { getSheetComponentOptions } from '../src/utils';
-import { data, totalData, meta } from '../__tests__/data/mock-dataset.json';
+import {
+  data,
+  totalData,
+  meta,
+  fields,
+} from '../__tests__/data/mock-dataset.json';
+import { getSheetComponentOptions } from '@/utils';
 
 const BASIC_BACKGROUND_COLOR = '#FFFFFF';
 const INTERACTIVE_BACKGROUND_COLOR = '#E1EAFE';
 
-export const defaultTheme = {
+export const strategyTheme: S2Theme = {
   cornerCell: {
     icon: {
       size: 12,
@@ -80,12 +91,7 @@ export const pivotSheetDataCfg: S2DataConfig = {
   data,
   totalData,
   meta,
-  fields: {
-    rows: ['province', 'city'],
-    columns: ['type', 'sub_type'],
-    values: ['number'],
-    valueInCols: true,
-  },
+  fields,
 };
 
 export const s2Options: S2Options = {
@@ -111,9 +117,13 @@ export const sliderOptions: SliderSingleProps = {
 };
 
 export const strategyOptions: S2Options = {
-  width: 1000,
+  width: 800,
   height: 400,
   cornerText: '指标',
+  placeholder: (v) => {
+    const placeholder = v?.fieldValue ? '-' : '';
+    return placeholder;
+  },
   headerActionIcons: [
     {
       iconNames: ['Trend'],

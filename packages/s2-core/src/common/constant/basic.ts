@@ -2,6 +2,7 @@ import { i18n } from '../i18n';
 // 值字段的 id 是固定的！
 export const VALUE_FIELD = '$$value$$';
 export const EXTRA_FIELD = '$$extra$$';
+export const EXTRA_COLUMN_FIELD = '$$extra_column$$';
 export const TOTAL_VALUE = '$$total$$';
 export const SERIES_NUMBER_FIELD = '$$series_number$$';
 export const DEFAULT_CORNER_TEXT = i18n('指标');
@@ -44,6 +45,7 @@ export const KEY_GROUP_COL_HORIZONTAL_RESIZE_AREA =
 export const KEY_GROUP_COL_SCROLL = 'colScrollGroup';
 export const KEY_GROUP_COL_FROZEN = 'colFrozenGroup';
 export const KEY_GROUP_COL_FROZEN_TRAILING = 'colFrozenTrailingGroup';
+export const KEY_GROUP_GRID_GROUP = 'gridGroup';
 
 // key of series number node in corner header
 export const KEY_SERIES_NUMBER_NODE = 'series-number-node';

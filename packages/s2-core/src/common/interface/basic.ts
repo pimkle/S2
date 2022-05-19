@@ -122,7 +122,12 @@ export interface Total {
   /** 是否显示总计 */
   showGrandTotals: boolean;
   /** 是否显示小计 */
-  showSubTotals: boolean;
+  showSubTotals:
+    | boolean
+    | {
+        /** 当子维度个数 <=1 时，仍然展示小计：默认 true */
+        always: boolean;
+      };
   // 前端计算总计
   calcTotals?: CalcTotals;
   // 前端计算小计
@@ -182,6 +187,8 @@ export type SortParams = SortParam[];
 
 export interface Style {
   readonly layoutWidthType?: LayoutWidthType;
+  // 是否展示树状分层下的层级占位点
+  readonly showTreeLeafNodeAlignDot?: boolean;
   // row cell's height in tree mode
   readonly treeRowsWidth?: number;
   // row header in tree mode collapse some nodes
@@ -218,20 +225,25 @@ export interface HeaderActionIconProps {
   event?: Event;
 }
 
+export interface HeaderActionIconOptions {
+  iconName: string;
+  x: number;
+  y: number;
+  action: (props: HeaderActionIconProps) => void;
+  defaultHide?: boolean;
+}
+
 export interface HeaderActionIcon {
   // 已注册的 icon 类型或自定义的 icon 类型名
   iconNames: string[];
-
   // 所属的 cell 类型
   belongsCell: Omit<CellTypes, 'dataCell'>;
   // 是否默认隐藏， true 为 hover后显示, false 为一直显示
   defaultHide?: boolean;
-
   // 需要展示的层级(行头/列头) 如果没有改配置则默认全部打开
   displayCondition?: (mete: Node) => boolean;
-
   // 点击后的执行函数
-  action: (headerActionIconProps: HeaderActionIconProps) => void;
+  action?: (headerActionIconProps: HeaderActionIconProps) => void;
 }
 
 // Hook 渲染和布局相关的函数类型定义
@@ -392,6 +404,7 @@ export interface ViewMeta {
   rowId?: string;
   colId?: string;
   field?: string;
+  isFrozenCorner?: boolean;
   [key: string]: any;
 }
 
@@ -466,4 +479,9 @@ export interface PartDrillDownFieldInLevel {
 
 export interface TableSortParam extends SortParam {
   sortKey: string;
+}
+
+export interface GridInfo {
+  cols: number[];
+  rows: number[];
 }

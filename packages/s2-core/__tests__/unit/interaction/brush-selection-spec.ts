@@ -1,6 +1,7 @@
 import { Group } from '@antv/g-canvas';
 import { range } from 'lodash';
 import { DataCell } from 'src/cell/data-cell';
+import { FrozenGroup } from 'src/common/constant';
 import { RootInteraction } from '@/interaction/root';
 import {
   ScrollDirection,
@@ -252,7 +253,7 @@ describe('Interaction Brush Selection Tests', () => {
     ).toBeFalsy();
   });
 
-  test('should get brush selection range cells', async () => {
+  test('should get brush selection range cells', () => {
     const selectedFn = jest.fn();
     const brushSelectionFn = jest.fn();
 
@@ -317,7 +318,7 @@ describe('Interaction Brush Selection Tests', () => {
     expect(brushSelectionFn).toHaveBeenCalledTimes(1);
   });
 
-  test('should get correct formatted brush point', async () => {
+  test('should get correct formatted brush point', () => {
     const EXTRA_PIXEL = 2;
     const VSCROLLBAR_WIDTH = 5;
     const { width, height } = mockSpreadSheetInstance.facet.getCanvasHW();
@@ -409,7 +410,7 @@ describe('Interaction Brush Selection Tests', () => {
     });
   });
 
-  test('shoud get correct selected cell metas', async () => {
+  test('should get correct selected cell metas', () => {
     expect(
       brushSelectionInstance.getSelectedCellMetas({
         start: {
@@ -424,7 +425,7 @@ describe('Interaction Brush Selection Tests', () => {
     ).toBe(100);
   });
 
-  test('shoud get correct adjusted frozen rowIndex and colIndex', async () => {
+  test('should get correct adjusted frozen rowIndex and colIndex', () => {
     const { adjustNextColIndexWithFrozen, adjustNextRowIndexWithFrozen } =
       brushSelectionInstance;
     mockSpreadSheetInstance.setOptions({
@@ -451,7 +452,7 @@ describe('Interaction Brush Selection Tests', () => {
     expect(adjustNextRowIndexWithFrozen(7, ScrollDirection.TRAILING)).toBe(7);
   });
 
-  test('shoud get correct scroll offset for row and col', async () => {
+  test('should get correct scroll offset for row and col', () => {
     const { facet } = mockSpreadSheetInstance;
     expect(
       getScrollOffsetForCol(
@@ -469,11 +470,17 @@ describe('Interaction Brush Selection Tests', () => {
     ).toBe(200);
 
     (facet as TableFacet).frozenGroupInfo = {
-      col: {
+      [FrozenGroup.FROZEN_COL]: {
         width: 100,
       },
-      trailingCol: {
+      [FrozenGroup.FROZEN_TRAILING_COL]: {
         width: 100,
+      },
+      [FrozenGroup.FROZEN_ROW]: {
+        height: 0,
+      },
+      [FrozenGroup.FROZEN_TRAILING_ROW]: {
+        height: 0,
       },
     };
 
@@ -514,10 +521,16 @@ describe('Interaction Brush Selection Tests', () => {
     ).toBe(320);
 
     (facet as TableFacet).frozenGroupInfo = {
-      row: {
+      [FrozenGroup.FROZEN_COL]: {
+        width: 0,
+      },
+      [FrozenGroup.FROZEN_TRAILING_COL]: {
+        width: 0,
+      },
+      [FrozenGroup.FROZEN_ROW]: {
         height: 100,
       },
-      trailingRow: {
+      [FrozenGroup.FROZEN_TRAILING_ROW]: {
         height: 100,
       },
     };
@@ -537,7 +550,7 @@ describe('Interaction Brush Selection Tests', () => {
     ).toBe(420);
   });
 
-  test('shoud get valid x and y index', async () => {
+  test('should get valid x and y index', () => {
     const { validateXIndex, validateYIndex } = brushSelectionInstance;
     expect(validateXIndex(-1)).toBe(null);
     expect(validateXIndex(1)).toBe(1);
@@ -550,16 +563,16 @@ describe('Interaction Brush Selection Tests', () => {
     expect(validateYIndex(9)).toBe(9);
 
     (mockSpreadSheetInstance.facet as TableFacet).frozenGroupInfo = {
-      col: {
+      [FrozenGroup.FROZEN_COL]: {
         range: [0, 1],
       },
-      trailingCol: {
+      [FrozenGroup.FROZEN_TRAILING_COL]: {
         range: [8, 9],
       },
-      row: {
+      [FrozenGroup.FROZEN_ROW]: {
         range: [0, 1],
       },
-      trailingRow: {
+      [FrozenGroup.FROZEN_TRAILING_ROW]: {
         range: [8, 9],
       },
     };

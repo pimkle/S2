@@ -1,7 +1,7 @@
 /**
  * pivot mode pivot test.
  */
-import { Canvas } from '@antv/g-canvas';
+import { Canvas, Group } from '@antv/g-canvas';
 import { assembleDataCfg, assembleOptions } from 'tests/util';
 import { size, get, find } from 'lodash';
 import { getMockPivotMeta } from './util';
@@ -15,6 +15,7 @@ import { DEFAULT_OPTIONS, DEFAULT_STYLE } from '@/common/constant/options';
 import { ColHeader, CornerHeader, Frame, RowHeader } from '@/facet/header';
 import { ViewMeta } from '@/common/interface/basic';
 import { RootInteraction } from '@/interaction/root';
+import { GridGroup } from '@/group/grid-group';
 
 jest.mock('@/interaction/root');
 
@@ -34,6 +35,9 @@ jest.mock('src/sheet-type', () => {
     height: 100,
     container: document.body,
   });
+  const panelScrollGroup = new Group({}) as GridGroup;
+  panelScrollGroup.updateGrid = () => {};
+  container.add(panelScrollGroup);
   return {
     SpreadSheet: jest.fn().mockImplementation(() => {
       return {
@@ -42,7 +46,7 @@ jest.mock('src/sheet-type', () => {
         container,
         theme: getTheme({}),
         store: new Store(),
-        panelScrollGroup: container.addGroup(),
+        panelScrollGroup,
         panelGroup: container.addGroup(),
         foregroundGroup: container.addGroup(),
         backgroundGroup: container.addGroup(),
@@ -78,6 +82,7 @@ jest.mock('src/data-set/pivot-data-set', () => {
           find(meta, (m) => m.field === field),
         getFieldName: actualPivotDataSet.prototype.getFieldName,
         getCellData: actualPivotDataSet.prototype.getCellData,
+        getMultiData: jest.fn(),
         getDimensionValues: actualPivotDataSet.prototype.getDimensionValues,
       };
     }),
@@ -95,7 +100,7 @@ describe('Pivot Mode Facet Test', () => {
 
   const facet: PivotFacet = new PivotFacet({
     spreadsheet: s2,
-    dataSet: dataSet,
+    dataSet,
     dataCell: (fct) => new DataCell(fct, s2),
     ...assembleDataCfg().fields,
     ...assembleOptions(),
@@ -227,7 +232,7 @@ describe('Pivot Mode Facet Test', () => {
       expect(rowHeader.cfg.visible).toBeTrue();
 
       expect(cornerHeader instanceof CornerHeader).toBeTrue();
-      expect(cornerHeader.cfg.children).toHaveLength(3);
+      expect(cornerHeader.cfg.children).toHaveLength(2);
       expect(cornerHeader.cfg.visible).toBeTrue();
 
       expect(columnHeader instanceof ColHeader).toBeTrue();

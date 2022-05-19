@@ -1,5 +1,7 @@
 import { concat, filter, find, forEach, isEmpty, isNil, map } from 'lodash';
 import { getCellMeta } from 'src/utils/interaction/select-event';
+import type { IElement } from '@antv/g-canvas';
+import { CornerCellClick } from './base-interaction/click/corner-cell-click';
 import {
   DataCellClick,
   MergedCellClick,
@@ -11,7 +13,7 @@ import { EventController } from './event-controller';
 import { RangeSelection } from './range-selection';
 import { SelectedCellMove } from './selected-cell-move';
 import { BrushSelection, DataCellMultiSelection, RowColumnResize } from './';
-import { hideColumnsByThunkGroup, hideColumns } from '@/utils/hide-columns';
+import { hideColumnsByThunkGroup } from '@/utils/hide-columns';
 import { Node } from '@/facet/layout/node';
 import { ColCell, DataCell, MergedCell, RowCell } from '@/cell';
 import {
@@ -123,6 +125,10 @@ export class RootInteraction {
     return this.isStateOf(InteractionStateName.SELECTED);
   }
 
+  public isAllSelectedState() {
+    return this.isStateOf(InteractionStateName.ALL_SELECTED);
+  }
+
   public isHoverFocusState() {
     return this.isStateOf(InteractionStateName.HOVER_FOCUS);
   }
@@ -131,11 +137,11 @@ export class RootInteraction {
     return this.isStateOf(InteractionStateName.HOVER);
   }
 
-  public isActiveCell(cell: S2CellType) {
-    return this.getCells().find((meta) => cell.getMeta().id === meta.id);
+  public isActiveCell(cell: S2CellType): boolean {
+    return !!this.getCells().find((meta) => cell.getMeta().id === meta.id);
   }
 
-  public isSelectedCell(cell: S2CellType) {
+  public isSelectedCell(cell: S2CellType): boolean {
     return this.isSelectedState() && this.isActiveCell(cell);
   }
 
@@ -156,15 +162,17 @@ export class RootInteraction {
   }
 
   public clearStyleIndependent() {
-    const currentState = this.getState();
     if (
-      currentState?.stateName === InteractionStateName.SELECTED ||
-      currentState?.stateName === InteractionStateName.HOVER
+      !this.isSelectedState() &&
+      !this.isHoverState() &&
+      !this.isAllSelectedState()
     ) {
-      this.getPanelGroupAllDataCells().forEach((cell) => {
-        cell.hideInteractionShape();
-      });
+      return;
     }
+
+    this.getPanelGroupAllDataCells().forEach((cell) => {
+      cell.hideInteractionShape();
+    });
   }
 
   public getPanelGroupAllUnSelectedDataCells() {
@@ -175,12 +183,12 @@ export class RootInteraction {
 
   public getPanelGroupAllDataCells(): DataCell[] {
     return getAllChildCells(
-      this.spreadsheet.panelGroup?.getChildren(),
+      this.spreadsheet.panelGroup?.getChildren() as IElement[],
       DataCell,
     );
   }
 
-  public getAllRowHeaderCells() {
+  public getAllRowHeaderCells(): RowCell[] {
     const children = this.spreadsheet.foregroundGroup?.getChildren();
     const rowHeader = filter(
       children,
@@ -197,10 +205,10 @@ export class RootInteraction {
     const rowCells = currentNode || [];
     return rowCells.filter(
       (cell: S2CellType) => cell.cellType === CellTypes.ROW_CELL,
-    ) as RowCell[];
+    );
   }
 
-  public getAllColHeaderCells() {
+  public getAllColHeaderCells(): ColCell[] {
     const children = this.spreadsheet?.foregroundGroup?.getChildren();
     const colHeader = filter(
       children,
@@ -213,11 +221,11 @@ export class RootInteraction {
       return [];
     }
 
-    const colCells = getAllChildCells(headerChildren, ColCell);
+    const colCells = getAllChildCells(headerChildren, ColCell) as ColCell[];
 
     return colCells.filter(
       (cell: S2CellType) => cell.cellType === CellTypes.COL_CELL,
-    ) as ColCell[];
+    );
   }
 
   public getRowColActiveCells(ids: string[]) {
@@ -241,36 +249,69 @@ export class RootInteraction {
     });
   };
 
-  public selectHeaderCell = (selectHeaderCellInfo: SelectHeaderCellInfo) => {
-    const { cell } = selectHeaderCellInfo || {};
+  public getCellLeafNodes = (cell: S2CellType): Node[] => {
+    const meta = cell?.getMeta?.() as Node;
+    const isRowCell = cell?.cellType === CellTypes.ROW_CELL;
+    const isHierarchyTree = this.spreadsheet.isHierarchyTreeType();
+
+    // 树状模式的行头点击不需要遍历当前行头的所有子节点，因为只会有一级
+    if (isHierarchyTree && isRowCell) {
+      return Node.getAllLeaveNodes(meta).filter(
+        (node) => node.rowIndex === meta.rowIndex,
+      );
+    }
+
+    // 平铺模式 或 树状模式的列头点击遍历所有子节点
+    return Node.getAllChildrenNodes(meta);
+  };
+
+  public selectHeaderCell = (
+    selectHeaderCellInfo: SelectHeaderCellInfo = {} as SelectHeaderCellInfo,
+  ) => {
+    const { cell } = selectHeaderCellInfo;
     if (isEmpty(cell)) {
       return;
     }
-    const lastState = this.getState();
-    const meta = cell?.getMeta() as Node;
-    if (isNil(meta.x)) {
+
+    const currentCellMeta = cell?.getMeta?.() as Node;
+    if (!currentCellMeta || isNil(currentCellMeta?.x)) {
       return;
     }
-    this.addIntercepts([InterceptType.HOVER]);
-    // 树状结构的行头点击不需要遍历当前行头的所有子节点，因为只会有一级
-    let leafNodes = selectHeaderCellInfo?.isTreeRowClick
-      ? Node.getAllLeavesOfNode(meta).filter(
-          (node) => node.rowIndex === meta.rowIndex,
-        )
-      : Node.getAllChildrenNode(meta);
-    let selectedCells = [getCellMeta(cell)];
 
-    if (selectHeaderCellInfo?.isMultiSelection && this.isSelectedState()) {
-      selectedCells = isEmpty(lastState?.cells)
-        ? selectedCells
-        : concat(lastState?.cells, selectedCells);
-      leafNodes = isEmpty(lastState?.nodes)
-        ? leafNodes
-        : concat(lastState?.nodes, leafNodes);
+    this.addIntercepts([InterceptType.HOVER]);
+
+    const isHierarchyTree = this.spreadsheet.isHierarchyTreeType();
+    const isColCell = cell?.cellType === CellTypes.COL_CELL;
+    const lastState = this.getState();
+    const isSelectedCell = this.isSelectedCell(cell);
+    const isMultiSelected =
+      selectHeaderCellInfo?.isMultiSelection && this.isSelectedState();
+
+    // 如果是已选中的单元格, 则取消选中, 兼容行列多选 (含叶子节点)
+    let leafNodes = isSelectedCell ? [] : this.getCellLeafNodes(cell);
+    let selectedCells = isSelectedCell ? [] : [getCellMeta(cell)];
+
+    if (isMultiSelected) {
+      selectedCells = concat(lastState?.cells, selectedCells);
+      leafNodes = concat(lastState?.nodes, leafNodes);
+
+      if (isSelectedCell) {
+        selectedCells = selectedCells.filter(
+          ({ id }) => id !== currentCellMeta.id,
+        );
+        leafNodes = leafNodes.filter(
+          (node) => !node?.id.includes(currentCellMeta.id),
+        );
+      }
     }
 
-    // 兼容行列多选
-    // Set the header cells (colCell or RowCell)  selected information and update the dataCell state.
+    if (isEmpty(selectedCells)) {
+      this.reset();
+      this.spreadsheet.emit(S2Event.GLOBAL_SELECTED, this.getActiveCells());
+      return;
+    }
+
+    // 兼容行列多选 (高亮 行/列头 以及相对应的数值单元格)
     this.changeState({
       cells: selectedCells,
       nodes: leafNodes,
@@ -278,10 +319,10 @@ export class RootInteraction {
     });
 
     const selectedCellIds = selectedCells.map(({ id }) => id);
-    // Update the interaction state of all the selected cells:  header cells(colCell or RowCell) and dataCells belong to them.
     this.updateCells(this.getRowColActiveCells(selectedCellIds));
 
-    if (!selectHeaderCellInfo?.isTreeRowClick) {
+    // 平铺模式或者是树状模式下的列头单元格, 选中子节点
+    if (!isHierarchyTree || isColCell) {
       leafNodes.forEach((node) => {
         node?.belongsCell?.updateByState(
           InteractionStateName.SELECTED,
@@ -316,6 +357,10 @@ export class RootInteraction {
     } = this.spreadsheet.options.interaction;
 
     return [
+      {
+        key: InteractionName.CORNER_CELL_CLICK,
+        interaction: CornerCellClick,
+      },
       {
         key: InteractionName.DATA_CELL_CLICK,
         interaction: DataCellClick,
@@ -413,6 +458,11 @@ export class RootInteraction {
         });
       }
       return;
+    }
+
+    // 之前是全选状态，需要清除格子的样式
+    if (this.getCurrentStateName() === InteractionStateName.ALL_SELECTED) {
+      this.clearStyleIndependent();
     }
 
     this.clearState();

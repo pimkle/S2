@@ -1,10 +1,18 @@
-import type { IGroup } from '@antv/g-canvas';
-import type { GestureEvent } from '@antv/g-gesture';
-import { Wheel } from '@antv/g-gesture';
+import type { IElement, IGroup } from '@antv/g-canvas';
+import { GestureEvent, Wheel } from '@antv/g-gesture';
 import { interpolateArray } from 'd3-interpolate';
-import * as d3Timer from 'd3-timer';
+import { timer, Timer } from 'd3-timer';
 import { Group } from '@antv/g-canvas';
+import {
+  getColsForGrid,
+  getFrozenRowsForGrid,
+  getRowsForGrid,
+} from 'src/utils/grid';
 import { debounce, each, find, get, isUndefined, last, reduce } from 'lodash';
+import {
+  getAdjustedRowScrollX,
+  getAdjustedScrollOffset,
+} from 'src/utils/facet';
 import { CornerBBox } from './bbox/cornerBBox';
 import { PanelBBox } from './bbox/panelBBox';
 import {
@@ -43,13 +51,13 @@ import {
   DEBUG_VIEW_RENDER,
 } from '@/common/debug';
 import {
-  Formatter,
   LayoutResult,
   OffsetConfig,
   SpreadSheetFacetCfg,
   ViewMeta,
   S2CellType,
   FrameConfig,
+  GridInfo,
 } from '@/common/interface';
 import { updateMergedCells } from '@/utils/interaction/merge-cell';
 import { PanelIndexes, diffPanelIndexes } from '@/utils/indexes';
@@ -84,7 +92,7 @@ export abstract class BaseFacet {
 
   protected mobileWheel: Wheel;
 
-  protected timer: d3Timer.Timer;
+  protected timer: Timer;
 
   public hScrollBar: ScrollBar;
 
@@ -101,6 +109,8 @@ export abstract class BaseFacet {
   public rowIndexHeader: SeriesNumberHeader;
 
   public centerFrame: Frame;
+
+  public gridInfo: GridInfo;
 
   protected abstract doLayout(): LayoutResult;
 
@@ -438,7 +448,7 @@ export abstract class BaseFacet {
       adjustedScrollY === undefined ? oldOffset[1] : adjustedScrollY,
     ];
     const interpolate = interpolateArray(oldOffset, newOffset);
-    this.timer = d3Timer.timer((elapsed) => {
+    this.timer = timer((elapsed) => {
       const ratio = Math.min(elapsed / duration, 1);
       const [scrollX, scrollY] = interpolate(ratio);
       this.setScrollOffset({ scrollX, scrollY });
@@ -482,50 +492,23 @@ export abstract class BaseFacet {
     );
   };
 
-  private getAdjustedRowScrollX = (hRowScrollX: number): number => {
-    if (hRowScrollX + this.cornerBBox.width >= this.cornerBBox.originalWidth) {
-      return this.cornerBBox.originalWidth - this.cornerBBox.width;
-    }
-    return hRowScrollX;
-  };
-
-  private getAdjustedScrollX = (scrollX: number): number => {
-    const colsHierarchyWidth = this.layoutResult.colsHierarchy.width;
-    const panelWidth = this.panelBBox.width;
-    if (
-      scrollX + panelWidth >= colsHierarchyWidth &&
-      colsHierarchyWidth > panelWidth
-    ) {
-      return colsHierarchyWidth - panelWidth;
-    }
-    return Math.max(0, scrollX);
-  };
-
-  private getAdjustedScrollY = (scrollY: number): number => {
-    const rendererHeight = this.getRendererHeight();
-    const panelHeight = this.panelBBox.height;
-    if (
-      scrollY + panelHeight >= rendererHeight &&
-      rendererHeight > panelHeight
-    ) {
-      return rendererHeight - panelHeight;
-    }
-    // 当数据为空时，rendererHeight 可能为 0，此时 scrollY 为负值，需要调整为 0。
-    if (scrollY < 0) {
-      return 0;
-    }
-    return Math.max(0, scrollY);
-  };
-
   private getAdjustedScrollOffset = ({
     scrollX,
     scrollY,
     hRowScrollX,
   }: ScrollOffset): ScrollOffset => {
     return {
-      scrollX: this.getAdjustedScrollX(scrollX),
-      scrollY: this.getAdjustedScrollY(scrollY),
-      hRowScrollX: this.getAdjustedRowScrollX(hRowScrollX),
+      scrollX: getAdjustedScrollOffset(
+        scrollX,
+        this.layoutResult.colsHierarchy.width,
+        this.panelBBox.width,
+      ),
+      scrollY: getAdjustedScrollOffset(
+        scrollY,
+        this.getRendererHeight(),
+        this.panelBBox.height,
+      ),
+      hRowScrollX: getAdjustedRowScrollX(hRowScrollX, this.cornerBBox),
     };
   };
 
@@ -976,7 +959,7 @@ export abstract class BaseFacet {
         }
       });
       const allCells = getAllChildCells(
-        this.panelGroup.getChildren(),
+        this.panelGroup.getChildren() as IElement[],
         DataCell,
       );
       // remove cell from panelCell
@@ -1188,6 +1171,22 @@ export abstract class BaseFacet {
     return this.centerFrame;
   }
 
+  protected getGridInfo = () => {
+    const [colMin, colMax, rowMin, rowMax] = this.preCellIndexes.center;
+    const cols = getColsForGrid(colMin, colMax, this.layoutResult.colLeafNodes);
+    const rows = getRowsForGrid(rowMin, rowMax, this.viewCellHeights);
+
+    return {
+      cols,
+      rows,
+    };
+  };
+
+  public drawGrid() {
+    this.gridInfo = this.getGridInfo();
+    this.spreadsheet.panelScrollGroup.updateGrid(this.gridInfo);
+  }
+
   /**
    * When scroll behavior happened, only render one time in a period,
    * but render immediately in initiate
@@ -1198,14 +1197,11 @@ export abstract class BaseFacet {
     const { scrollX, scrollY: sy, hRowScrollX } = this.getScrollOffset();
     let scrollY = sy + this.getPaginationScrollY();
 
-    const maxScrollY = Math.max(
-      0,
-      this.viewCellHeights.getTotalHeight() - this.panelBBox.viewportHeight,
+    scrollY = getAdjustedScrollOffset(
+      scrollY,
+      this.viewCellHeights.getTotalHeight(),
+      this.panelBBox.viewportHeight,
     );
-
-    if (scrollY > maxScrollY) {
-      scrollY = maxScrollY;
-    }
 
     if (delay) {
       this.debounceRenderCell(scrollX, scrollY);
@@ -1213,6 +1209,7 @@ export abstract class BaseFacet {
       this.realCellRender(scrollX, scrollY);
     }
 
+    this.drawGrid();
     this.translateRelatedGroups(scrollX, scrollY, hRowScrollX);
     this.clip(scrollX, scrollY);
 

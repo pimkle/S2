@@ -59,7 +59,7 @@ order: 0
 | onRangeSorted | 组内排序结束触发回调事件（暂只支持透视表）                                                                                      | (event: CanvasEvent ) => void; | |  |
 | onRangeFilter | 筛选时触发回调事件                                                                                  | (data: { filterKey: string; filteredValues: string[] } ) => void; | | |
 | onRangeFiltered | 筛选结束触发回调事件                                                                                    | (data: DataType[] ) => void; | | |
-| onLayoutAfterHeaderLayout | 表头布局结构准备完成事件                                                                            | (layoutResult: [LayoutResult](#/zh/docs/api/general/S2Options#layoutresult) ) => void; | | |
+| onLayoutAfterHeaderLayout | 表头布局结构准备完成事件                                                                            | (layoutResult: [LayoutResult](/zh/docs/api/general/S2Options/#layoutresult) ) => void; | | |
 | onLayoutPagination | 分页事件                                                                            | ({ pageSize: number; pageCount: number; total: number; current: number;} ) => void; | | |
 | onLayoutCellScroll | 单元格滚动事件                                                                            | ({position: [CellScrollPosition](#cellscrollposition)} ) => void; | | |
 | onLayoutAfterCollapseRows | 树状模式下收起行头后的事件回调                                                                           | ({collapsedRows: Record<string, boolean>, meta: [Node](/zh/docs/api/basic-class/node) ) => void; | | |
@@ -87,7 +87,7 @@ order: 0
 | onContextMenu | 右键单元格单击事件 | (data: [TargetCellInfo](#targetcellinfo)) => void | | |
 | onMouseHover | 表格鼠标悬停事件 | (event: CanvasEvent) => void | | |
 | onMouseUp | 表格鼠标松开事件 | (event: CanvasEvent) => void | | |
-| onSelected | 单元格选中事件 | (cells: DataCell[]) => void | | |
+| onSelected | 单元格选中事件 | (cells: S2Cell[]) => void | | |
 | onReset | 交互状态重置事件 | (event: KeyboardEvent) => void | | |
 | onLinkFieldJump | 链接字段跳转事件 | (data: { key: string; record: [Data](/zh/docs/api/general/S2DataConfig#data) }) => void | | |
 

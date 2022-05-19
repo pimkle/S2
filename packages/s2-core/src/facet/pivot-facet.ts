@@ -1,12 +1,17 @@
 import {
   find,
   forEach,
+  forIn,
   get,
+  isArray,
   isEmpty,
+  isObject,
   last,
+  max,
   maxBy,
   merge,
   reduce,
+  size,
 } from 'lodash';
 import { BaseFacet } from 'src/facet/base-facet';
 import { getDataCellId } from 'src/utils/cell/data-cell';
@@ -29,9 +34,10 @@ import {
   measureTextWidth,
   measureTextWidthRoughly,
   getCellWidth,
+  safeJsonParse,
 } from '@/utils/text';
 import { getSubTotalNodeWidthOrHeightByLevel } from '@/utils/facet';
-import { IconTheme } from '@/common';
+import { IconTheme, MultiData } from '@/common';
 
 export class PivotFacet extends BaseFacet {
   get rowCellTheme() {
@@ -301,7 +307,7 @@ export class PivotFacet extends BaseFacet {
     }
     // adaptive
     if (this.spreadsheet.isHierarchyTreeType()) {
-      return this.getAdaptTreeColWidth(colLeafNodes);
+      return this.getAdaptTreeColWidth(col, colLeafNodes);
     }
     return this.getAdaptGridColWidth(colLeafNodes, rowHeaderWidth);
   }
@@ -372,7 +378,8 @@ export class PivotFacet extends BaseFacet {
       'options.style.rowCfg.heightByField',
       {},
     );
-    const sampleNodeByLevel = new Map();
+
+    const sampleNodeByLevel = rowsHierarchy.sampleNodesForAllLevels ?? [];
 
     // 1、calculate first node's width in every level
     if (isTree) {
@@ -384,7 +391,11 @@ export class PivotFacet extends BaseFacet {
           colLeafNodes,
         );
         rowsHierarchy.width += levelSample.width;
-        sampleNodeByLevel.set(levelSample.level, levelSample);
+        const preLevelSample = sampleNodeByLevel[levelSample.level - 1] ?? {
+          x: 0,
+          width: 0,
+        };
+        levelSample.x = preLevelSample?.x + preLevelSample?.width;
       }
     }
 
@@ -414,7 +425,7 @@ export class PivotFacet extends BaseFacet {
       if (isTree || currentNode.level === 0) {
         currentNode.x = 0;
       } else {
-        const preLevelSample = sampleNodeByLevel.get(currentNode.level - 1);
+        const preLevelSample = sampleNodeByLevel[currentNode.level - 1];
         currentNode.x = preLevelSample?.x + preLevelSample?.width;
       }
 
@@ -423,7 +434,7 @@ export class PivotFacet extends BaseFacet {
         currentNode.width = this.getTreeRowHeaderWidth();
       } else {
         // same level -> same width
-        const levelSampleNode = sampleNodeByLevel.get(currentNode.level);
+        const levelSampleNode = sampleNodeByLevel[currentNode.level];
         currentNode.width = levelSampleNode?.width;
       }
 
@@ -589,7 +600,7 @@ export class PivotFacet extends BaseFacet {
    *  计算树状模式等宽条件下的列宽
    * @returns number
    */
-  private getAdaptTreeColWidth(colLeafNodes: Node[]): number {
+  private getAdaptTreeColWidth(col: Node, colLeafNodes: Node[]): number {
     // tree row width = [config width, canvas / 2]
     const canvasW = this.getCanvasHW().width;
     const rowHeaderWidth = Math.min(canvasW / 2, this.getTreeRowHeaderWidth());
@@ -597,9 +608,35 @@ export class PivotFacet extends BaseFacet {
     const colSize = Math.max(1, colLeafNodes.length);
     const { cellCfg } = this.cfg;
     return Math.max(
-      getCellWidth(cellCfg),
+      getCellWidth(cellCfg, this.getColLabelLength(col)),
       (canvasW - rowHeaderWidth) / colSize,
     );
+  }
+
+  private getColLabelLength(col: Node) {
+    // 如果 label 字段形如 "["xx","xxx"]"，直接获取其长度
+    const labels = safeJsonParse(col?.value);
+    if (isArray(labels)) {
+      return labels.length;
+    }
+
+    // 否则动态采样前50条数据，如果数据value是数组类型，获取其长度
+    const { dataSet } = this.cfg;
+    const multiData = dataSet.getMultiData(
+      col.query,
+      col.isTotals || col.isTotalMeasure,
+    );
+    // 采样前50，根据指标个数获取单元格列宽
+    const demoData = multiData?.slice(0, 50) ?? [];
+    const lengths = [];
+    forEach(demoData, (value) => {
+      forIn(value, (v: MultiData) => {
+        if (isObject(v) && v?.values) {
+          lengths.push(size(v?.values[0]));
+        }
+      });
+    });
+    return max(lengths) || 1;
   }
 
   /**
@@ -633,6 +670,7 @@ export class PivotFacet extends BaseFacet {
     if (rowCfg?.treeRowsWidth) {
       return rowCfg?.treeRowsWidth;
     }
+
     // + province/city/level
     const treeHeaderLabel = rows
       .map((key: string): string => dataSet.getFieldName(key))
@@ -648,10 +686,7 @@ export class PivotFacet extends BaseFacet {
       this.rowCellTheme.padding?.left +
       this.rowCellTheme.padding?.right;
 
-    const width = Math.max(treeRowsWidth, maxLabelWidth);
-    // NOTE: mark as user drag to calculate only one time
-    rowCfg.treeRowsWidth = width;
-    return width;
+    return Math.max(treeRowsWidth, maxLabelWidth);
   }
 
   /**

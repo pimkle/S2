@@ -1,8 +1,7 @@
-import { PanelGroup } from 'src/group/panel-group';
+import { PanelScrollGroup } from 'src/group/panel-scroll-group';
 import EE from '@antv/event-emitter';
 import { Canvas, Event as CanvasEvent, Group, IGroup } from '@antv/g-canvas';
 import {
-  clone,
   forEach,
   forIn,
   get,
@@ -58,8 +57,10 @@ import { BaseTooltip } from '@/ui/tooltip';
 import { clearValueRangeState } from '@/utils/condition/state-controller';
 import { customMerge } from '@/utils/merge';
 import { getTooltipData, getTooltipOptions } from '@/utils/tooltip';
-import { registerIcon, getIcon } from '@/common/icons/factory';
+import { registerIcon } from '@/common/icons/factory';
 import { getSafetyDataConfig, getSafetyOptions } from '@/utils/merge';
+import { FrozenGroup } from '@/group/frozen-group';
+import { CacheableGroup } from '@/group/cacheable-group';
 
 export abstract class SpreadSheet extends EE {
   // theme config
@@ -96,19 +97,19 @@ export abstract class SpreadSheet extends EE {
   // facet cell area group, it contains all cross-tab's cell
   public panelGroup: IGroup;
 
-  public panelScrollGroup: IGroup;
+  public panelScrollGroup: CacheableGroup;
 
-  public frozenRowGroup: IGroup;
+  public frozenRowGroup: FrozenGroup;
 
-  public frozenColGroup: IGroup;
+  public frozenColGroup: FrozenGroup;
 
-  public frozenTrailingRowGroup: IGroup;
+  public frozenTrailingRowGroup: FrozenGroup;
 
-  public frozenTrailingColGroup: IGroup;
+  public frozenTrailingColGroup: FrozenGroup;
 
-  public frozenTopGroup: IGroup;
+  public frozenTopGroup: FrozenGroup;
 
-  public frozenBottomGroup: IGroup;
+  public frozenBottomGroup: FrozenGroup;
 
   // contains rowHeader,cornerHeader,colHeader, scroll bars
   public foregroundGroup: IGroup;
@@ -274,9 +275,11 @@ export abstract class SpreadSheet extends EE {
       return;
     }
 
+    const targetCell = this.getCell(event?.target);
     const tooltipData = getTooltipData({
       spreadsheet: this,
       cellInfos: data,
+      targetCell,
       options: {
         enableFormat: true,
         ...options,
@@ -325,8 +328,7 @@ export abstract class SpreadSheet extends EE {
    */
   public setDataCfg(dataCfg: S2DataConfig) {
     this.store.set('originalDataCfg', dataCfg);
-    const newDataCfg = clone(dataCfg);
-    this.dataCfg = getSafetyDataConfig(newDataCfg);
+    this.dataCfg = getSafetyDataConfig(this.dataCfg, dataCfg);
     // clear value ranger after each updated data cfg
     clearValueRangeState(this);
   }
@@ -400,7 +402,7 @@ export abstract class SpreadSheet extends EE {
   /**
    * @param width
    * @param height
-   * @deprecated 该方法将会在2.0被移除
+   * @deprecated 该方法将会在2.0被移除, 请使用 changeSheetSize 代替
    */
   public changeSize(
     width: number = this.options.width,
@@ -418,10 +420,13 @@ export abstract class SpreadSheet extends EE {
     width: number = this.options.width,
     height: number = this.options.height,
   ) {
-    const isEqualSize =
-      width === this.options.width && height === this.options.height;
+    const containerWidth = this.container.get('width');
+    const containerHeight = this.container.get('height');
 
-    if (isEqualSize) {
+    const isSizeChanged =
+      width !== containerWidth || height !== containerHeight;
+
+    if (!isSizeChanged) {
       return;
     }
 
@@ -516,15 +521,18 @@ export abstract class SpreadSheet extends EE {
    */
   public getTotalsConfig(dimension: string): Partial<Totals['row']> {
     const { totals } = this.options;
-    const { rows } = this.dataCfg.fields;
+    const { rows } = this.dataSet.fields;
+
     const totalConfig = get(
       totals,
       includes(rows, dimension) ? 'row' : 'col',
       {},
     ) as Total;
-    const showSubTotals = totalConfig.showSubTotals
-      ? includes(totalConfig.subTotalsDimensions, dimension)
-      : false;
+    const showSubTotals =
+      totalConfig.showSubTotals &&
+      includes(totalConfig.subTotalsDimensions, dimension)
+        ? totalConfig.showSubTotals
+        : false;
     return {
       showSubTotals,
       showGrandTotals: totalConfig.showGrandTotals,
@@ -582,10 +590,10 @@ export abstract class SpreadSheet extends EE {
   }
 
   protected initPanelGroupChildren() {
-    this.panelScrollGroup = new PanelGroup({
+    this.panelScrollGroup = new PanelScrollGroup({
       name: KEY_GROUP_PANEL_SCROLL,
       zIndex: PANEL_GROUP_SCROLL_GROUP_Z_INDEX,
-      ss: this,
+      s2: this,
     });
     this.panelGroup.add(this.panelScrollGroup);
   }

@@ -130,6 +130,7 @@ describe('Interaction Event Controller Tests', () => {
       OriginEventType.MOUSE_OUT,
       OriginEventType.CONTEXT_MENU,
       OriginEventType.DOUBLE_CLICK,
+      OriginEventType.CLICK,
     ];
     expect(eventController.canvasEventHandlers).toHaveLength(
       canvasEventTypes.length,
@@ -199,7 +200,10 @@ describe('Interaction Event Controller Tests', () => {
       type: CellTypes.MERGED_CELL,
       eventNames: [S2Event.MERGED_CELLS_MOUSE_DOWN],
     },
-  ])('should emit mouse down for %o', expectEvents(OriginEventType.MOUSE_DOWN));
+  ])(
+    'should emit mouse down event for %o',
+    expectEvents(OriginEventType.MOUSE_DOWN),
+  );
 
   test.each([
     {
@@ -243,7 +247,7 @@ describe('Interaction Event Controller Tests', () => {
       ],
     },
   ])(
-    'should emit mouse move and hover for %s',
+    'should emit mouse move and hover event for %s',
     expectEvents(OriginEventType.MOUSE_MOVE),
   );
 
@@ -269,7 +273,7 @@ describe('Interaction Event Controller Tests', () => {
       eventNames: [S2Event.MERGED_CELLS_MOUSE_UP],
     },
   ])(
-    'should emit mouse up and hover for %s',
+    'should emit mouse up and click event for %s',
     expectEvents(OriginEventType.MOUSE_UP),
   );
 
@@ -295,8 +299,40 @@ describe('Interaction Event Controller Tests', () => {
       eventNames: [S2Event.MERGED_CELLS_DOUBLE_CLICK],
     },
   ])(
-    'should emit double click for %s',
+    'should emit double click event for %s',
     expectEvents(OriginEventType.DOUBLE_CLICK),
+  );
+
+  test.each([
+    {
+      type: CellTypes.DATA_CELL,
+      eventNames: [S2Event.DATA_CELL_CONTEXT_MENU, S2Event.GLOBAL_CONTEXT_MENU],
+    },
+    {
+      type: CellTypes.ROW_CELL,
+      eventNames: [S2Event.ROW_CELL_CONTEXT_MENU, S2Event.GLOBAL_CONTEXT_MENU],
+    },
+    {
+      type: CellTypes.COL_CELL,
+      eventNames: [S2Event.COL_CELL_CONTEXT_MENU, S2Event.GLOBAL_CONTEXT_MENU],
+    },
+    {
+      type: CellTypes.CORNER_CELL,
+      eventNames: [
+        S2Event.CORNER_CELL_CONTEXT_MENU,
+        S2Event.GLOBAL_CONTEXT_MENU,
+      ],
+    },
+    {
+      type: CellTypes.MERGED_CELL,
+      eventNames: [
+        S2Event.MERGED_CELLS_CONTEXT_MENU,
+        S2Event.GLOBAL_CONTEXT_MENU,
+      ],
+    },
+  ])(
+    'should emit context menu event for %s',
+    expectEvents(OriginEventType.CONTEXT_MENU),
   );
 
   test('should emit global context menu event', () => {
@@ -342,8 +378,7 @@ describe('Interaction Event Controller Tests', () => {
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', {
-        key: InteractionKeyboardKey.ARROW_UP,
-        metaKey: true,
+        key: InteractionKeyboardKey.ESC,
       }),
     );
     expect(copied).not.toHaveBeenCalled();
@@ -371,23 +406,6 @@ describe('Interaction Event Controller Tests', () => {
     );
     expect(copied).not.toHaveBeenCalled();
   });
-
-  test.each([
-    { type: OriginEventType.KEY_DOWN, event: S2Event.GLOBAL_KEYBOARD_DOWN },
-    { type: OriginEventType.KEY_UP, event: S2Event.GLOBAL_KEYBOARD_DOWN },
-  ])(
-    'should not trigger sheet %o if outside the canvas container',
-    ({ type, event }) => {
-      // 模拟点击的不是表格区域
-      window.dispatchEvent(new Event('click', {}));
-
-      const handler = jest.fn();
-      spreadsheet.on(event, handler);
-
-      window.dispatchEvent(new KeyboardEvent(type, {}));
-      expect(handler).not.toHaveBeenCalled();
-    },
-  );
 
   test('should not reset if current interaction has brush selection', () => {
     spreadsheet.interaction.addIntercepts([InterceptType.BRUSH_SELECTION]);
@@ -547,43 +565,150 @@ describe('Interaction Event Controller Tests', () => {
     expect(spreadsheet.interaction.reset).not.toHaveBeenCalled();
   });
 
-  test('should hide tooltip and clear hover highlight cell if current mouse outside the cell', () => {
+  test('should hide tooltip and clear hover highlight cell if current mouse outside the canvas', () => {
     spreadsheet.interaction.changeState({
       cells: [{} as CellMeta],
       stateName: InteractionStateName.HOVER,
     });
-    spreadsheet.container.emit(OriginEventType.MOUSE_OUT);
+    spreadsheet.container.emit(OriginEventType.MOUSE_OUT, {
+      shape: null,
+    });
 
     expect(spreadsheet.interaction.reset).toHaveBeenCalled();
     expect(spreadsheet.hideTooltip).toHaveBeenCalled();
     expect(spreadsheet.interaction.getActiveCells()).toHaveLength(0);
   });
 
-  test('should not hide tooltip if mouse outside the cell and has selected cells', () => {
+  test('should not hide tooltip if mouse move inside the canvas', () => {
     spreadsheet.interaction.changeState({
       cells: [{} as CellMeta],
       stateName: InteractionStateName.SELECTED,
     });
-    spreadsheet.container.emit(OriginEventType.MOUSE_OUT);
+    spreadsheet.container.emit(OriginEventType.MOUSE_OUT, {
+      shape: 'mock',
+    });
 
     expect(spreadsheet.interaction.reset).not.toHaveBeenCalled();
   });
 
-  test('should disable reset if mouse outside the cell and autoResetSheetStyle set to false', () => {
+  test('should not hide tooltip if mouse outside the canvas and has selected cells', () => {
+    spreadsheet.interaction.changeState({
+      cells: [{} as CellMeta],
+      stateName: InteractionStateName.SELECTED,
+    });
+    spreadsheet.container.emit(OriginEventType.MOUSE_OUT, {
+      shape: null,
+    });
+
+    expect(spreadsheet.interaction.reset).not.toHaveBeenCalled();
+  });
+
+  test('should disable reset if mouse outside the canvas and autoResetSheetStyle set to false', () => {
     spreadsheet.setOptions({
       interaction: {
         autoResetSheetStyle: false,
       },
     });
 
-    spreadsheet.container.emit(OriginEventType.MOUSE_OUT);
+    spreadsheet.container.emit(OriginEventType.MOUSE_OUT, {
+      shape: null,
+    });
     expect(spreadsheet.interaction.reset).not.toHaveBeenCalled();
   });
 
-  test('should disable reset if mouse outside the cell and action tooltip is active', () => {
+  test('should disable reset if mouse outside the canvas and action tooltip is active', () => {
     spreadsheet.interaction.addIntercepts([InterceptType.HOVER]);
 
-    spreadsheet.container.emit(OriginEventType.MOUSE_OUT);
+    spreadsheet.container.emit(OriginEventType.MOUSE_OUT, {
+      shape: null,
+    });
     expect(spreadsheet.interaction.reset).not.toHaveBeenCalled();
   });
+
+  // https://github.com/antvis/S2/issues/1172
+  test.each([
+    { type: OriginEventType.KEY_DOWN, event: S2Event.GLOBAL_KEYBOARD_DOWN },
+    { type: OriginEventType.KEY_UP, event: S2Event.GLOBAL_KEYBOARD_UP },
+    { type: OriginEventType.MOUSE_UP, event: S2Event.GLOBAL_MOUSE_UP },
+    { type: OriginEventType.MOUSE_MOVE, event: S2Event.GLOBAL_MOUSE_MOVE },
+  ])(
+    'should not prevent default original event if controller emitted global event %o',
+    ({ type, event }) => {
+      jest
+        .spyOn(HTMLElement.prototype, 'contains')
+        .mockImplementation(() => true);
+
+      const handler = jest.fn();
+      const originalEventHandler = jest.fn();
+      const preventDefault = jest.fn();
+
+      spreadsheet.on(event, handler);
+
+      // 外部额外注册一个相同的事件
+      window.addEventListener(type, originalEventHandler);
+
+      window.dispatchEvent(
+        new MouseEvent('click', { preventDefault } as EventInit),
+      );
+      window.dispatchEvent(new Event(type, { preventDefault } as EventInit));
+
+      // 都应该触发
+      expect(handler).toHaveBeenCalled();
+      expect(originalEventHandler).toHaveBeenCalled();
+
+      // 不应该阻止默认事件
+      expect(preventDefault).not.toHaveBeenCalled();
+
+      spreadsheet.off(event, handler);
+      window.removeEventListener(type, originalEventHandler);
+    },
+  );
+
+  test.each([
+    { type: OriginEventType.KEY_DOWN, event: S2Event.GLOBAL_KEYBOARD_DOWN },
+    { type: OriginEventType.KEY_UP, event: S2Event.GLOBAL_KEYBOARD_UP },
+    { type: OriginEventType.MOUSE_UP, event: S2Event.GLOBAL_MOUSE_UP },
+    { type: OriginEventType.MOUSE_MOVE, event: S2Event.GLOBAL_MOUSE_MOVE },
+  ])(
+    'should first trigger capture event listener event %o',
+    ({ type, event }) => {
+      eventController.clear();
+      spreadsheet.options = {
+        ...s2Options,
+        interaction: {
+          // 捕获阶段
+          eventListenerOptions: {
+            capture: true,
+          },
+        },
+      };
+      eventController = new EventController(spreadsheet);
+
+      jest
+        .spyOn(HTMLElement.prototype, 'contains')
+        .mockImplementation(() => true);
+
+      const captureEventHandler = jest.fn();
+      const bubbleEventHandler = jest.fn();
+      const preventDefault = jest.fn();
+
+      // 通过 event controller 注册 [捕获阶段] 的事件
+      spreadsheet.on(event, captureEventHandler);
+
+      // 额外注册一个相同的 [冒泡阶段] 的事件
+      window.addEventListener(type, bubbleEventHandler);
+
+      window.dispatchEvent(
+        new MouseEvent('click', { preventDefault } as EventInit),
+      );
+      window.dispatchEvent(new Event(type, { preventDefault } as EventInit));
+
+      // 捕获 比冒泡先触发, 且应该都触发
+      expect(captureEventHandler).toHaveBeenCalledBefore(bubbleEventHandler);
+      expect(bubbleEventHandler).toHaveBeenCalledAfter(captureEventHandler);
+
+      spreadsheet.off(event, captureEventHandler);
+      window.removeEventListener(type, bubbleEventHandler);
+    },
+  );
 });

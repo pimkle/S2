@@ -1,5 +1,6 @@
-import { Event as CanvasEvent } from '@antv/g-canvas';
+import type { Event as CanvasEvent } from '@antv/g-canvas';
 import { difference } from 'lodash';
+import { isMultiSelectionKey } from '@/utils/interaction/select-event';
 import {
   hideColumnsByThunkGroup,
   isEqualDisplaySiblingNodeId,
@@ -7,7 +8,6 @@ import {
 import { BaseEvent, BaseEventImplement } from '@/interaction/base-event';
 import {
   S2Event,
-  InteractionKeyboardKey,
   InterceptType,
   CellTypes,
   TOOLTIP_OPERATOR_HIDDEN_COLUMNS_MENU,
@@ -39,7 +39,7 @@ export class RowColumnClick extends BaseEvent implements BaseEventImplement {
     this.spreadsheet.on(
       S2Event.GLOBAL_KEYBOARD_DOWN,
       (event: KeyboardEvent) => {
-        if (event.key === InteractionKeyboardKey.META) {
+        if (isMultiSelectionKey(event)) {
           this.isMultiSelection = true;
         }
       },
@@ -48,7 +48,7 @@ export class RowColumnClick extends BaseEvent implements BaseEventImplement {
 
   private bindKeyboardUp() {
     this.spreadsheet.on(S2Event.GLOBAL_KEYBOARD_UP, (event: KeyboardEvent) => {
-      if (event.key === InteractionKeyboardKey.META) {
+      if (isMultiSelectionKey(event)) {
         this.isMultiSelection = false;
         this.spreadsheet.interaction.removeIntercepts([InterceptType.CLICK]);
       }
@@ -57,7 +57,7 @@ export class RowColumnClick extends BaseEvent implements BaseEventImplement {
 
   private bindRowCellClick() {
     this.spreadsheet.on(S2Event.ROW_CELL_CLICK, (event: CanvasEvent) => {
-      this.handleRowColClick(event, this.spreadsheet.isHierarchyTreeType());
+      this.handleRowColClick(event);
     });
   }
 
@@ -67,23 +67,17 @@ export class RowColumnClick extends BaseEvent implements BaseEventImplement {
     });
   }
 
-  private handleRowColClick = (event: CanvasEvent, isTreeRowClick = false) => {
+  private handleRowColClick = (event: CanvasEvent) => {
     event.stopPropagation();
     const { interaction } = this.spreadsheet;
     const cell = this.spreadsheet.getCell(event.target);
 
-    if (interaction.isSelectedCell(cell)) {
-      interaction.reset();
-      return;
-    }
+    const success = interaction.selectHeaderCell({
+      cell,
+      isMultiSelection: this.isMultiSelection,
+    });
 
-    if (
-      interaction.selectHeaderCell({
-        cell,
-        isTreeRowClick,
-        isMultiSelection: this.isMultiSelection,
-      })
-    ) {
+    if (success) {
       this.showTooltip(event);
     }
   };

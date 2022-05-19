@@ -1,9 +1,8 @@
 import { BBox, Group, Region } from '@antv/g-canvas';
 import { ScrollOffset, SpreadSheet } from '..';
+import { GridGroup } from './grid-group';
 
-export class CacheableGroup extends Group {
-  private ss: SpreadSheet;
-
+export class CacheableGroup extends GridGroup {
   public imageData: ImageData;
 
   public hasChanged = false;
@@ -17,11 +16,6 @@ export class CacheableGroup extends Group {
     height: number;
   };
 
-  constructor(cfg) {
-    super(cfg);
-    this.ss = cfg.ss;
-  }
-
   exportToCanvas(ctx: CanvasRenderingContext2D) {
     const canvasTargetCtx = (
       document.querySelector('#foo') as HTMLCanvasElement
@@ -30,7 +24,7 @@ export class CacheableGroup extends Group {
   }
 
   drawToCanvas(ctx: CanvasRenderingContext2D) {
-    const currentOffset = this.ss.facet.getScrollOffset();
+    const currentOffset = this.s2.facet.getScrollOffset();
     const deltaX = currentOffset.scrollX - this.lastRenderScrollOffset.scrollX;
     const deltaY = currentOffset.scrollY - this.lastRenderScrollOffset.scrollY;
 
@@ -78,7 +72,7 @@ export class CacheableGroup extends Group {
       // debug
       // this.exportToCanvas(context);
 
-      this.lastRenderScrollOffset = this.ss.facet.getScrollOffset();
+      this.lastRenderScrollOffset = this.s2.facet.getScrollOffset();
     }
   }
 }

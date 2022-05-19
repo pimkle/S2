@@ -4,6 +4,7 @@ import {
   isUpDataValue,
   measureTextWidth,
   getCellWidth,
+  getEmptyPlaceholder,
 } from '@/utils/text';
 
 describe('Text Utils Tests', () => {
@@ -73,11 +74,13 @@ describe('Text Utils Tests', () => {
 
   test('should get correct text width', () => {
     const width = measureTextWidth('test', font);
+    // 如果没改逻辑，16不要改，本地挂了也别改，机器分辨率不同，以 github ci 结果为准
     expect(Math.floor(width)).toEqual(16);
   });
 
   test('should get correct text width roughly', () => {
     const width = measureTextWidth('test', font);
+    // 同上
     expect(Math.floor(width)).toEqual(16);
   });
 
@@ -116,5 +119,30 @@ describe('Text Utils Tests', () => {
     const width = getCellWidth(cellCfg);
 
     expect(width).toEqual(90);
+  });
+
+  test('should get correct emptyPlaceholder when the type of placeholder is string', () => {
+    const meta = {
+      id: 'root',
+      value: '',
+      key: '',
+    };
+
+    const placeholder = getEmptyPlaceholder(meta, '*');
+
+    expect(placeholder).toEqual('*');
+  });
+
+  test('should get correct emptyPlaceholder when the type of placeholder is function', () => {
+    const meta = {
+      id: 'root',
+      value: 'test',
+    };
+
+    const placeholder = getEmptyPlaceholder(meta, (meta) => {
+      return meta.value;
+    });
+
+    expect(placeholder).toEqual('test');
   });
 });

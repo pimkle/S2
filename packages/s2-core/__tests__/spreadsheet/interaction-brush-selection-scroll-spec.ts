@@ -69,7 +69,7 @@ const options: S2Options = {
   },
 };
 
-describe('Bursh selection scroll spec', () => {
+describe('Brush selection scroll spec', () => {
   test('Should scroll when mouse outside canvas', async () => {
     const s2 = new TableSheet(getContainer(), dataCfg, options);
     s2.render();
@@ -79,6 +79,7 @@ describe('Bursh selection scroll spec', () => {
     s2.emit(S2Event.DATA_CELL_MOUSE_DOWN, {
       target,
       originalEvent: { layerX: 1, layerY: 1 },
+      event: { x: 1, y: 1 },
       preventDefault() {},
     } as any);
     await sleep(40);
@@ -107,7 +108,7 @@ describe('Bursh selection scroll spec', () => {
     const brushInteraction = s2.interaction.interactions.get(
       InteractionName.BRUSH_SELECTION,
     ) as BrushSelection;
-    // expect(brushInteraction.mouseMoveDistanceFromCanvas).toBeGreaterThan(0);
+
     const brushRange = brushInteraction.getBrushRange();
     const allCells = s2.interaction.getCells();
     const lastCell = allCells[allCells.length - 1];
@@ -115,45 +116,39 @@ describe('Bursh selection scroll spec', () => {
     expect(brushRange.start.rowIndex).toBe(allCells[0].rowIndex);
     expect(brushRange.end.colIndex).toBe(lastCell.colIndex);
     expect(brushRange.end.rowIndex).toBe(lastCell.rowIndex);
-  });
 
-  test('Should scroll with frozen rows when mouse outside canvas', async () => {
-    const s2 = new TableSheet(getContainer(), dataCfg, {
-      ...options,
+    s2.setOptions({
       frozenColCount: 2,
       frozenRowCount: 2,
       frozenTrailingColCount: 2,
       frozenTrailingRowCount: 2,
     });
-
     s2.render();
-    const offsetY = s2.container.get('el').getBoundingClientRect().top;
-    const dataCells = s2.frozenTopGroup.getChildren();
-    const target = dataCells.find((item) => item instanceof DataCell);
+    s2.interaction.reset();
 
     s2.emit(S2Event.DATA_CELL_MOUSE_DOWN, {
       target,
-      originalEvent: { layerX: 128, layerY: 49 },
+      event: { x: 128, y: 49 },
       preventDefault() {},
     } as any);
 
     s2.emit(S2Event.GLOBAL_MOUSE_MOVE, {
       clientX: 400,
-      clientY: 400 + offsetY,
+      clientY: 400,
       preventDefault() {},
     } as any);
     await sleep(40);
 
     s2.emit(S2Event.GLOBAL_MOUSE_MOVE, {
       clientX: 400,
-      clientY: 1000 + offsetY,
+      clientY: 1000,
       preventDefault() {},
     } as any);
-    await sleep(30);
+    await sleep(60);
 
     s2.emit(S2Event.GLOBAL_MOUSE_UP, {
       clientX: 400,
-      clientY: 1000 + offsetY,
+      clientY: 1000,
       preventDefault() {},
     } as any);
 
