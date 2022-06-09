@@ -56,6 +56,7 @@ import {
 } from '../utils/dataset/pivot-data-set';
 import { calcActionByType } from '../utils/number-calculate';
 import { handleSortAction } from '../utils/sort-action';
+import { createWrappedDataItem } from '../utils/dataset/wrap-data';
 import { BaseDataSet } from './base-data-set';
 import type {
   CellDataParams,
@@ -266,11 +267,7 @@ export class PivotDataSet extends BaseDataSet {
     forEach(fieldsValues, (value) => {
       forEach(originData, (dataItem) => {
         if (has(dataItem, value)) {
-          transformedData.push({
-            ...dataItem,
-            [EXTRA_FIELD]: value,
-            [VALUE_FIELD]: dataItem[value],
-          });
+          transformedData.push(createWrappedDataItem(dataItem, value));
         }
       });
     });
