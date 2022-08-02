@@ -1,5 +1,6 @@
 import type { SpreadSheet } from '@antv/s2';
 import React from 'react';
+import { EditableSheet } from './editable-sheet';
 import { GridAnalysisSheet } from './grid-analysis-sheet';
 import type { SheetComponentsProps } from './interface';
 import { PivotSheet } from './pivot-sheet';
@@ -30,6 +31,8 @@ const Sheet = React.forwardRef(
           return <GridAnalysisSheet {...sheetProps} />;
         case 'strategy':
           return <StrategySheet {...sheetProps} />;
+        case 'editable': 
+          return <EditableSheet {...sheetProps}/>
         default:
           return <PivotSheet {...sheetProps} />;
       }

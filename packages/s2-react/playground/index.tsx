@@ -987,7 +987,7 @@ function MainLayout() {
                 />
               ),
             }}
-          />
+        />
         </TabPane>
         <TabPane tab="网格分析表" key="gridAnalysis">
           <SheetComponent
@@ -995,6 +995,15 @@ function MainLayout() {
             dataCfg={mockGridAnalysisDataCfg}
             options={mockGridAnalysisOptions}
           />
+        </TabPane>
+        <TabPane tab="编辑表" key="editable">
+          <SheetComponent
+            sheetType="editable"
+            dataCfg={tableSheetDataCfg}
+            options={mergedOptions}
+            ref={s2Ref}
+            themeCfg={themeCfg}
+          ></SheetComponent>
         </TabPane>
       </Tabs>
     </div>
